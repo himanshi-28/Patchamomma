@@ -1,0 +1,31 @@
+appId: com.sakhicircle.app
+name: Sign-in visibility and native shell
+---
+- launchApp:
+    clearState: false
+- openLink: "exp+sakhicircle://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- extendedWaitUntil:
+    visible: "Welcome to SakhiCircle"
+    timeout: 30000
+- assertVisible: "Welcome to SakhiCircle"
+- assertVisible: "Email address"
+- assertVisible: "Send sign-in link"
+- assertVisible: "Continue with Google"
+- assertVisible: "Continue as Meera"
+- tapOn: "Hi, let me help you"
+- assertVisible: "Signing in"
+- assertVisible: "Finding a hobby"
+- assertVisible: "Using voice"
+- tapOn: "Close help"
+- tapOn: "Continue as Meera"
+- assertVisible: "Your next chapter starts here"
+- assertVisible: "Today"
+- assertVisible: "My Circle"
+- assertVisible: "Mentors"
+- tapOn: "My Circle"
+- assertVisible: "Your circle is ready when you are."
+- tapOn: "Mentors"
+- assertVisible: "Find guidance at your pace."
+- tapOn: "Today"
+- tapOn: "हिंदी में देखें"
+- assertVisible: "आपकी अगली शुरुआत यहाँ से होती है"

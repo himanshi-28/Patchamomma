@@ -1,0 +1,17 @@
+appId: com.sakhicircle.app
+name: Keyboard visibility and portrait lock
+---
+- launchApp:
+    clearState: false
+- openLink: "exp+sakhicircle://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- extendedWaitUntil:
+    visible: "Welcome to SakhiCircle"
+    timeout: 30000
+- tapOn: "Email address"
+- inputText: "meera@example.com"
+- assertVisible: "Send sign-in link"
+- hideKeyboard
+- setOrientation: LANDSCAPE
+- assertVisible: "Welcome to SakhiCircle"
+- setOrientation: PORTRAIT
+- assertVisible: "Continue as Meera"

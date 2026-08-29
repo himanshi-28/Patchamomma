@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "SakhiCircle",
+    "slug": "sakhicircle",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "sakhicircle",
+    "userInterfaceStyle": "light",
+    "platforms": [
+      "android"
+    ],
+    "android": {
+      "package": "com.sakhicircle.app",
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

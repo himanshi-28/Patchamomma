@@ -1,0 +1,23 @@
+{
+  "name": "sakhicircle",
+  "private": true,
+  "packageManager": "pnpm@11.19.0",
+  "scripts": {
+    "test": "pnpm test:quality",
+    "test:quality": "pnpm test:web && pnpm test:mobile && pnpm test:api && pnpm test:contracts && pnpm lint:api && pnpm build:web && pnpm test:e2e",
+    "test:web": "pnpm --filter @sakhicircle/web test",
+    "test:api": ".venv/bin/python -m pytest services/api/tests",
+    "test:contracts": "node --test scripts/tests/*.test.mjs",
+    "lint:api": ".venv/bin/ruff check services/api",
+    "build:web": "pnpm --filter @sakhicircle/web build",
+    "test:e2e": "pnpm --filter @sakhicircle/web test:e2e",
+    "build": "pnpm -r build",
+    "test:local": "node --test scripts/tests/dev-local.test.mjs",
+    "dev:local": "node scripts/dev-local.mjs",
+    "dev:web": "pnpm --filter @sakhicircle/web dev",
+    "dev:mobile": "pnpm --filter @sakhicircle/mobile start",
+    "android": "pnpm --filter @sakhicircle/mobile android",
+    "test:mobile": "pnpm --filter @sakhicircle/mobile test",
+    "typecheck:mobile": "pnpm --filter @sakhicircle/mobile typecheck"
+  }
+}

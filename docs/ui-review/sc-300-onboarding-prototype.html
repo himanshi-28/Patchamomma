@@ -1,0 +1,597 @@
+<!doctype html>
+<html lang="en-IN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SC-300 onboarding design review</title>
+    <style>
+      :root {
+        font-family: "Noto Sans Devanagari", "Noto Sans", Inter, system-ui, sans-serif;
+        color: #10140b;
+        background: #f8efda;
+        font-synthesis: none;
+        --canvas: #f8efda;
+        --surface: #efe2c4;
+        --selected: #e5d5ad;
+        --ink: #10140b;
+        --muted: #4d5338;
+        --olive: #7a8450;
+        --olive-dark: #697343;
+        --error: #a12b32;
+        --success: #697343;
+        --radius-sm: 8px;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+      }
+      * { box-sizing: border-box; }
+      [hidden] { display: none !important; }
+      html { min-width: 320px; background: var(--canvas); }
+      body {
+        margin: 0;
+        min-width: 320px;
+        min-height: 100vh;
+        padding-bottom: 88px;
+        color: var(--ink);
+        background: var(--canvas);
+        font-size: 18px;
+        line-height: 1.55;
+      }
+      button, textarea, input, select { font: inherit; }
+      button, a, textarea, input, select, summary { -webkit-tap-highlight-color: transparent; }
+      button, a { min-width: 48px; min-height: 48px; }
+      button:focus-visible, a:focus-visible, textarea:focus-visible, input:focus-visible,
+      select:focus-visible, summary:focus-visible, [tabindex="-1"]:focus-visible {
+        outline: 3px solid var(--ink);
+        outline-offset: 3px;
+      }
+      h1, h2, h3, p, ol { margin-top: 0; }
+      h1, h2, h3 { line-height: 1.18; letter-spacing: -0.025em; text-wrap: balance; }
+      p { text-wrap: pretty; }
+      body[data-locale="en"] .copy-hi,
+      body[data-locale="hi"] .copy-en,
+      body[data-stage="capture"] .stage-review,
+      body[data-stage="review"] .stage-capture { display: none !important; }
+
+      .app-header {
+        position: sticky;
+        z-index: 20;
+        top: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 72px;
+        padding: 10px 16px;
+        border-bottom: 1px solid rgba(122, 132, 80, 0.42);
+        background: rgba(248, 239, 218, 0.96);
+        backdrop-filter: blur(10px);
+      }
+      .brand, .header-actions, .button-row, .voice-actions, .notice,
+      .privacy-note, .consent-label, .field-actions, .toolbar-actions {
+        display: flex;
+        align-items: center;
+      }
+      .brand { gap: 10px; color: var(--ink); font-weight: 850; text-decoration: none; }
+      .brand-mark, .avatar {
+        display: grid;
+        place-items: center;
+        flex: 0 0 auto;
+        color: #f8efda;
+        background: var(--olive-dark);
+      }
+      .brand-mark { width: 38px; height: 38px; border-radius: var(--radius-sm); }
+      .avatar { width: 36px; height: 36px; border-radius: 50%; font-weight: 800; }
+      .header-actions { gap: 8px; }
+      .language-button, .profile-button, .help-button, .secondary-button,
+      .edit-action, .save-field, .voice-button, .retry-button {
+        justify-content: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border: 1px solid var(--olive);
+        border-radius: var(--radius-sm);
+        color: var(--ink);
+        background: var(--canvas);
+        font-weight: 750;
+        cursor: pointer;
+      }
+      .language-button:hover, .profile-button:hover, .help-button:hover,
+      .secondary-button:hover, .edit-action:hover, .save-field:hover,
+      .voice-button:hover, .retry-button:hover { background: var(--selected); }
+      .profile-name { display: none; }
+
+      .primary-navigation {
+        position: fixed;
+        z-index: 30;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        min-height: 76px;
+        padding: 6px max(8px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+        background: var(--surface);
+        box-shadow: 0 -2px 10px rgba(16, 20, 11, 0.18);
+      }
+      .primary-navigation a {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        padding: 4px 8px;
+        border-radius: var(--radius-sm);
+        color: var(--muted);
+        font-size: 0.94rem;
+        font-weight: 750;
+        text-decoration: none;
+      }
+      .primary-navigation a.active { color: var(--ink); background: var(--selected); }
+      .nav-icon { width: 24px; height: 24px; }
+
+      .app-main { width: min(100% - 28px, 1040px); margin: 0 auto; padding: 20px 0 56px; }
+      .main-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+      .main-toolbar p { margin: 0; font-weight: 850; }
+      .toolbar-actions { gap: 8px; }
+      .draft-state { color: var(--muted); font-size: 0.94rem; font-weight: 700; }
+      .help-button { min-height: 48px; padding: 6px 10px; }
+      .help-panel {
+        margin: -6px 0 18px;
+        padding: 14px 16px;
+        border: 1px solid var(--olive-dark);
+        border-radius: var(--radius-sm);
+        background: var(--canvas);
+      }
+      .flow-progress {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin: 0 0 28px;
+        padding: 0;
+        list-style: none;
+      }
+      .flow-progress li {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 52px;
+        padding: 8px 10px;
+        border: 1px solid rgba(122, 132, 80, 0.5);
+        border-radius: var(--radius-md);
+        color: var(--muted);
+        font-size: 0.94rem;
+        font-weight: 750;
+      }
+      .flow-progress li[aria-current="step"] { color: var(--ink); border-color: var(--olive-dark); background: var(--selected); }
+      .step-number { display: grid; width: 30px; height: 30px; flex: 0 0 auto; place-items: center; border-radius: 50%; color: #fff; background: var(--olive-dark); }
+      .screen-heading { max-width: 760px; margin-bottom: 22px; }
+      .screen-heading h1 { margin-bottom: 10px; font-size: clamp(2rem, 7vw, 3.2rem); }
+      .screen-heading p { max-width: 68ch; margin-bottom: 0; color: var(--muted); }
+      .capture-panel, .review-card, .success-screen {
+        padding: 20px;
+        border: 1px solid rgba(122, 132, 80, 0.42);
+        border-radius: var(--radius-lg);
+        background: var(--surface);
+      }
+      label { font-weight: 800; }
+      .label-help, .panel-intro, .consent-help, .storage-footnote {
+        display: block;
+        color: var(--muted);
+        font-size: 0.94rem;
+        font-weight: 550;
+      }
+      textarea, input[type="text"], select {
+        width: 100%;
+        border: 1px solid var(--olive-dark);
+        border-radius: var(--radius-sm);
+        color: var(--ink);
+        background: var(--canvas);
+      }
+      textarea { min-height: 190px; margin-top: 10px; padding: 14px; resize: vertical; }
+      input[type="text"], select { min-height: 54px; padding: 8px 10px; }
+      .voice-actions { align-items: flex-start; flex-wrap: wrap; gap: 10px 14px; margin-top: 12px; }
+      .listening-status { flex: 1 1 220px; margin: 9px 0 0; color: var(--muted); }
+      .voice-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--error); }
+      .voice-button.listening .voice-dot { box-shadow: 0 0 0 5px var(--selected); }
+      .privacy-note, .notice, .scenario-panel {
+        align-items: flex-start;
+        gap: 12px;
+        margin: 16px 0;
+        padding: 14px 16px;
+        border-radius: var(--radius-md);
+        background: var(--canvas);
+      }
+      .privacy-note { border: 1px solid var(--olive-dark); }
+      .privacy-note p, .notice p, .scenario-panel p { margin: 0; }
+      .privacy-note strong, .privacy-note span, .notice strong, .notice span { display: block; }
+      .privacy-icon, .notice-icon { flex: 0 0 auto; font-weight: 900; }
+      .scenario-panel { display: none; border: 2px solid var(--error); }
+      body[data-scenario="empty"] [data-scenario="empty"],
+      body[data-scenario="mic-denied"] [data-scenario="mic-denied"],
+      body[data-scenario="unsupported"] [data-scenario="unsupported"],
+      body[data-scenario="missing"] [data-scenario="missing"],
+      body[data-scenario="changed"] [data-scenario="changed"],
+      body[data-scenario="save-error"] [data-scenario="save-error"] { display: flex; }
+      .button-row { flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+      .primary-button {
+        min-height: 54px;
+        padding: 10px 18px;
+        border: 2px solid var(--olive-dark);
+        border-radius: var(--radius-sm);
+        color: var(--ink);
+        background: var(--olive);
+        font-weight: 850;
+        cursor: pointer;
+      }
+      .primary-button:hover:not(:disabled) { background: var(--olive-dark); }
+      .primary-button:disabled { color: var(--muted); border-color: var(--olive); background: var(--surface); cursor: not-allowed; }
+      .capture-actions { justify-content: flex-end; }
+      .review-workflow { display: grid; gap: 16px; }
+      .transcript-review, .review-group { overflow: clip; border: 1px solid rgba(122, 132, 80, 0.48); border-radius: var(--radius-md); background: var(--canvas); }
+      summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        min-height: 56px;
+        padding: 12px 16px;
+        font-weight: 850;
+        cursor: pointer;
+        list-style: none;
+      }
+      summary::-webkit-details-marker { display: none; }
+      summary::after { content: "+"; font-size: 1.4rem; line-height: 1; }
+      details[open] > summary::after { content: "−"; }
+      .transcript-body, .group-body { padding: 0 16px 16px; }
+      .transcript-body textarea { min-height: 160px; }
+      .transcript-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+      .group-summary-copy { display: grid; }
+      .group-summary-copy small { color: var(--muted); font-size: 0.94rem; font-weight: 600; }
+      .review-groups { display: grid; gap: 12px; }
+      .field-row { position: relative; padding: 14px 0; border-top: 1px solid rgba(122, 132, 80, 0.3); }
+      .field-row:first-child { border-top: 0; }
+      .field-label { display: block; margin-bottom: 4px; font-size: 0.94rem; font-weight: 850; }
+      .field-value { margin: 0; padding-right: 64px; font-weight: 650; }
+      .field-actions { position: absolute; top: 10px; right: 0; }
+      .edit-action, .save-field { min-height: 48px; padding: 6px 9px; font-size: 0.94rem; }
+      .editor-wrap { margin-top: 8px; }
+      .editor-wrap .save-field { margin-top: 8px; }
+      .field-error { display: block; margin-top: 6px; color: var(--error); font-size: 0.94rem; font-weight: 800; }
+      .required-mark, .missing-badge { color: var(--error); }
+      .missing-badge, .changed-badge { display: inline-block; margin-top: 6px; font-size: 0.78rem; font-weight: 850; }
+      .changed-badge { color: var(--success); }
+      .field-row.is-missing { margin: 0 -10px; padding: 14px 10px; border: 2px solid var(--error); border-radius: var(--radius-sm); }
+      .consent-row { padding: 14px; border: 1px solid rgba(122, 132, 80, 0.45); border-radius: var(--radius-sm); background: var(--canvas); }
+      .consent-label { align-items: flex-start; gap: 12px; font-weight: 700; }
+      .consent-label input { width: 24px; height: 24px; flex: 0 0 auto; margin: 2px 0 0; accent-color: var(--olive-dark); }
+      .consent-help { margin: 8px 0 0 36px; }
+      .review-actions { justify-content: space-between; }
+      .storage-footnote { margin: 14px 0 0; }
+      .success-screen { display: none; text-align: center; }
+      body[data-scenario="success"] .review-workflow, body[data-scenario="success"] .review-heading { display: none !important; }
+      body[data-scenario="success"] [data-scenario="success"] { display: block; }
+      .success-mark { display: grid; width: 64px; height: 64px; margin: 0 auto 16px; place-items: center; border-radius: 50%; color: #fff; background: var(--success); font-size: 2rem; }
+      .prototype-toast { position: fixed; z-index: 50; right: 16px; bottom: 96px; left: 16px; max-width: 560px; margin: auto; padding: 12px 16px; border-radius: var(--radius-sm); color: #fff; background: var(--ink); text-align: center; }
+      .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+      @media (min-width: 900px) {
+        body { padding: 0 0 0 184px; }
+        .app-header { padding-right: 24px; padding-left: 24px; }
+        .profile-name { display: inline; }
+        .primary-navigation { top: 72px; right: auto; bottom: 0; width: 184px; grid-template-columns: 1fr; grid-template-rows: repeat(3, 68px); align-content: start; padding: 18px 12px; box-shadow: 2px 0 10px rgba(16, 20, 11, 0.12); }
+        .primary-navigation a { flex-direction: row; justify-content: flex-start; gap: 12px; padding: 10px 12px; font-size: 0.88rem; }
+        .app-main { width: min(100% - 48px, 1040px); padding-top: 30px; }
+        .capture-panel { padding: 28px; }
+        .review-card { padding: 24px; }
+        .review-workflow { grid-template-columns: minmax(280px, 0.8fr) minmax(430px, 1.2fr); align-items: start; }
+        .transcript-column { position: sticky; top: 96px; }
+        .review-groups { min-width: 0; }
+      }
+      @media (max-width: 480px) {
+        .app-header { padding: 8px 10px; }
+        .brand > span:last-child, .profile-button { display: none; }
+        .language-button { max-width: 168px; font-size: 0.82rem; }
+        .app-main { width: min(100% - 20px, 1040px); padding-top: 14px; }
+        .main-toolbar { align-items: flex-start; }
+        .toolbar-actions { flex-direction: column; align-items: flex-end; }
+        .flow-progress li { align-items: flex-start; min-height: 62px; font-size: 0.94rem; }
+        .screen-heading h1 { font-size: 2.05rem; }
+        .capture-panel, .review-card { padding: 16px; }
+        .review-actions > * { width: 100%; }
+        .field-value { padding-right: 58px; }
+      }
+      @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; } }
+    </style>
+  </head>
+  <body data-locale="en" data-stage="capture" data-scenario="ready">
+    <header class="app-header">
+      <a class="brand" href="#main-content" data-brand aria-label="SakhiCircle onboarding"><span class="brand-mark" aria-hidden="true">✦</span><span>SakhiCircle</span></a>
+      <div class="header-actions">
+        <button class="language-button copy-en" type="button" data-locale="hi" aria-label="View in Hindi">अA <span>हिंदी में देखें</span></button>
+        <button class="language-button copy-hi" type="button" data-locale="en" aria-label="अंग्रेज़ी में देखें">अA <span>View in English</span></button>
+        <button class="profile-button" type="button" data-profile aria-label="Meera Sharma profile"><span class="avatar" aria-hidden="true">M</span><span class="profile-name copy-en">Meera</span><span class="profile-name copy-hi">मीरा</span></button>
+      </div>
+    </header>
+    <nav class="primary-navigation" data-primary-nav aria-label="Primary navigation">
+      <a class="active" href="#main-content" aria-current="page"><svg class="nav-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 10.5 12 4l8 6.5V20H4z"/><path d="M9 20v-6h6v6"/></svg><span class="copy-en">Today</span><span class="copy-hi">आज</span></a>
+      <a href="#circle" data-preview-link><svg class="nav-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="9" r="3"/><circle cx="16" cy="9" r="3"/><path d="M2.5 20c.4-4 2.2-6 5.5-6s5.1 2 5.5 6M10.5 20c.4-4 2.2-6 5.5-6s5.1 2 5.5 6"/></svg><span class="copy-en">My Circle</span><span class="copy-hi">मेरा सर्कल</span></a>
+      <a href="#mentors" data-preview-link><svg class="nav-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h14v16H5z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg><span class="copy-en">Mentors</span><span class="copy-hi">मेंटर्स</span></a>
+    </nav>
+    <main id="main-content" class="app-main">
+      <div class="main-toolbar"><p class="copy-en">Hi, Meera</p><p class="copy-hi">नमस्ते, मीरा</p><div class="toolbar-actions"><span class="draft-state copy-en">Private draft · browser memory only</span><span class="draft-state copy-hi">निजी ड्राफ़्ट · केवल ब्राउज़र मेमोरी</span><button class="help-button" type="button" data-help aria-expanded="false"><span class="copy-en">Help</span><span class="copy-hi">मदद</span></button></div></div>
+      <div class="help-panel" data-help-panel hidden><p class="copy-en"><strong>You stay in control.</strong> Type if voice is unavailable, edit any detail, and confirm only when your words look right.</p><p class="copy-hi"><strong>नियंत्रण आपके पास है।</strong> आवाज़ उपलब्ध न हो तो लिखें, कोई भी विवरण बदलें और शब्द सही होने पर ही पुष्टि करें।</p></div>
+      <ol class="flow-progress" data-progress aria-label="Onboarding progress"><li data-progress-step="capture" aria-current="step"><span class="step-number">1</span><span class="copy-en">Share your wish</span><span class="copy-hi">अपनी इच्छा बताएँ</span></li><li data-progress-step="review"><span class="step-number">2</span><span class="copy-en">Review before saving</span><span class="copy-hi">सेव करने से पहले देखें</span></li></ol>
+
+      <section class="stage-capture">
+        <div class="locale-panel copy-en">
+          <header class="screen-heading"><h1 tabindex="-1" data-screen-title>What would you like to begin again?</h1><p>Speak naturally or type in your own words. You will check every detail before anything is saved.</p></header>
+          <div class="capture-panel"><label for="wish-en">Your learning wish<span class="label-help">Include what you want to learn, your goal, and time that feels realistic.</span></label><textarea id="wish-en" data-shared-transcript aria-describedby="capture-status-en"></textarea><div class="voice-actions"><button class="voice-button" type="button" data-voice-button><span class="voice-dot" aria-hidden="true"></span><span data-voice-label>Start speaking</span></button><p id="capture-status-en" class="listening-status" role="status" data-listening-status>Typing works just as well.</p></div></div>
+          <div class="scenario-panel" data-scenario="empty" role="status" tabindex="-1"><p><strong>Add a few words to continue.</strong> You can type or choose Start speaking.</p></div>
+          <div class="scenario-panel" data-scenario="mic-denied" role="alert" tabindex="-1"><p><strong>Microphone access is off.</strong> Continue by typing above, or allow access in your browser settings.</p></div>
+          <div class="scenario-panel" data-scenario="unsupported" role="alert" tabindex="-1"><p><strong>Voice input is not available in this browser.</strong> Continue by typing above.</p></div>
+          <div class="privacy-note"><span class="privacy-icon" aria-hidden="true">✓</span><p><strong>SakhiCircle never records or stores raw audio.</strong><span>Nothing is saved until you confirm. A browser speech provider may process audio under its own terms; SakhiCircle will name the provider and show its policy before requesting microphone permission.</span></p></div>
+          <div class="button-row capture-actions"><button class="primary-button" type="button" data-go-stage="review">Review my details →</button></div>
+        </div>
+        <div class="locale-panel copy-hi" lang="hi">
+          <header class="screen-heading"><h1 tabindex="-1" data-screen-title>आप फिर से क्या शुरू करना चाहती हैं?</h1><p>अपनी भाषा में बोलें या लिखें। कुछ भी सेव होने से पहले आप हर विवरण जाँचेंगी।</p></header>
+          <div class="capture-panel"><label for="wish-hi">आपकी सीखने की इच्छा<span class="label-help">क्या सीखना है, आपका लक्ष्य और जितना समय देना आसान लगे—यह सब बताएँ।</span></label><textarea id="wish-hi" data-shared-transcript aria-describedby="capture-status-hi"></textarea><div class="voice-actions"><button class="voice-button" type="button" data-voice-button><span class="voice-dot" aria-hidden="true"></span><span data-voice-label>बोलना शुरू करें</span></button><p id="capture-status-hi" class="listening-status" role="status" data-listening-status>लिखकर बताना भी उतना ही आसान है।</p></div></div>
+          <div class="scenario-panel" data-scenario="empty" role="status" tabindex="-1"><p><strong>आगे बढ़ने के लिए कुछ शब्द लिखें।</strong> आप लिख सकती हैं या “बोलना शुरू करें” चुन सकती हैं।</p></div>
+          <div class="scenario-panel" data-scenario="mic-denied" role="alert" tabindex="-1"><p><strong>माइक्रोफ़ोन की अनुमति बंद है।</strong> ऊपर लिखकर जारी रखें या ब्राउज़र सेटिंग में अनुमति दें।</p></div>
+          <div class="scenario-panel" data-scenario="unsupported" role="alert" tabindex="-1"><p><strong>इस ब्राउज़र में आवाज़ से लिखना उपलब्ध नहीं है।</strong> ऊपर लिखकर जारी रखें।</p></div>
+          <div class="privacy-note"><span class="privacy-icon" aria-hidden="true">✓</span><p><strong>SakhiCircle कच्ची ऑडियो रिकॉर्ड या सेव नहीं करता।</strong><span>आपकी पुष्टि तक कुछ भी सेव नहीं होता। ब्राउज़र की स्पीच सेवा अपनी शर्तों पर ऑडियो संसाधित कर सकती है; माइक्रोफ़ोन की अनुमति से पहले SakhiCircle सेवा का नाम और उसकी नीति दिखाएगा।</span></p></div>
+          <div class="button-row capture-actions"><button class="primary-button" type="button" data-go-stage="review">मेरे विवरण देखें →</button></div>
+        </div>
+      </section>
+
+      <section class="stage-review">
+        <div class="review-heading copy-en"><header class="screen-heading"><h1 tabindex="-1" data-screen-title>Check the details for your plan</h1><p>Three short sections replace one long form. Open a section and edit only what needs attention.</p></header></div>
+        <div class="review-heading copy-hi" lang="hi"><header class="screen-heading"><h1 tabindex="-1" data-screen-title>अपनी योजना के विवरण जाँचें</h1><p>एक लंबे फ़ॉर्म की जगह तीन छोटे भाग हैं। भाग खोलें और केवल ज़रूरी बदलाव करें।</p></header></div>
+        <div class="success-screen" data-scenario="success" role="status" tabindex="-1"><div class="success-mark" aria-hidden="true">✓</div><div class="copy-en"><h2>Your plan is ready to build</h2><p>The reviewed details were accepted. The transcript was discarded.</p></div><div class="copy-hi"><h2>आपकी योजना बनने के लिए तैयार है</h2><p>जाँचे हुए विवरण स्वीकार हुए। ट्रांसक्रिप्ट हटा दी गई।</p></div></div>
+        <div class="review-workflow">
+          <div class="transcript-column">
+            <div class="notice copy-en" role="status"><span class="notice-icon" aria-hidden="true">✓</span><p><strong>Nothing has been saved</strong><span>You are still in control of every detail.</span></p></div>
+            <div class="notice copy-hi" role="status"><span class="notice-icon" aria-hidden="true">✓</span><p><strong>अभी कुछ भी सेव नहीं हुआ है</strong><span>हर विवरण पर अभी भी आपका नियंत्रण है।</span></p></div>
+            <details class="transcript-review" data-transcript-review open><summary><span class="copy-en">1. Check your words</span><span class="copy-hi">1. अपने शब्द जाँचें</span></summary><div class="transcript-body copy-en"><label for="review-transcript-en">Editable transcript</label><textarea id="review-transcript-en" data-shared-transcript></textarea><div class="transcript-actions"><button class="secondary-button" type="button" data-review-transcript>My words look right</button><button class="secondary-button" type="button" data-update-details>Update details from my words</button></div></div><div class="transcript-body copy-hi" lang="hi"><label for="review-transcript-hi">बदली जा सकने वाली ट्रांसक्रिप्ट</label><textarea id="review-transcript-hi" data-shared-transcript></textarea><div class="transcript-actions"><button class="secondary-button" type="button" data-review-transcript>मेरे शब्द सही हैं</button><button class="secondary-button" type="button" data-update-details>मेरे शब्दों से विवरण अपडेट करें</button></div></div></details>
+            <div class="scenario-panel" data-scenario="save-error" role="alert" tabindex="-1"><p class="copy-en"><strong>Your plan was not saved.</strong> Your reviewed draft is still here. <button class="retry-button" type="button" data-retry>Retry</button></p><p class="copy-hi"><strong>आपकी योजना सेव नहीं हुई।</strong> आपका जाँचा हुआ ड्राफ़्ट यहीं है। <button class="retry-button" type="button" data-retry>फिर कोशिश करें</button></p></div>
+          </div>
+          <div class="review-card">
+            <div class="scenario-panel" data-scenario="missing" role="alert"><p class="copy-en"><strong>One required detail is missing.</strong> Add your first goal before confirming.</p><p class="copy-hi"><strong>एक ज़रूरी विवरण बाकी है।</strong> पुष्टि से पहले अपना पहला लक्ष्य जोड़ें।</p></div>
+            <div class="scenario-panel" data-scenario="changed" role="status"><p class="copy-en"><strong>Details updated.</strong> Review every row marked Changed.</p><p class="copy-hi"><strong>विवरण अपडेट हुए।</strong> “बदला हुआ” वाली हर पंक्ति जाँचें।</p></div>
+            <div class="review-groups">
+              <details class="review-group" data-group="learning"><summary><span class="group-summary-copy"><span class="copy-en">2. Learning</span><span class="copy-hi">2. सीखना</span><small class="copy-en">3 details</small><small class="copy-hi">3 विवरण</small></span></summary><div class="group-body">
+                <div class="field-row" data-field="hobby" tabindex="-1"><span class="field-label copy-en">What you want to learn <span class="required-mark">*</span></span><span class="field-label copy-hi">आप क्या सीखना चाहती हैं? <span class="required-mark">*</span></span><p class="field-value" data-field-value="hobby"></p><div class="field-actions"><button class="edit-action" type="button" data-edit-field="hobby" aria-label="Edit what you want to learn"><span class="copy-en">Edit</span><span class="copy-hi">बदलें</span></button></div><div class="editor-wrap" hidden><label class="copy-en" for="hobby-en">Edit learning wish</label><label class="copy-hi" for="hobby-hi">सीखने की इच्छा बदलें</label><input id="hobby-en" class="copy-en" type="text" data-field-editor="hobby" /><input id="hobby-hi" class="copy-hi" type="text" data-field-editor="hobby" /><button class="save-field" type="button" data-save-field="hobby"><span class="copy-en">Save detail</span><span class="copy-hi">विवरण सेव करें</span></button></div></div>
+                <div class="field-row" data-field="experience" tabindex="-1"><span class="field-label copy-en">Your experience <span class="required-mark">*</span></span><span class="field-label copy-hi">आपका अनुभव <span class="required-mark">*</span></span><p class="field-value" data-field-value="experience"></p><div class="field-actions"><button class="edit-action" type="button" data-edit-field="experience" aria-label="Edit your experience"><span class="copy-en">Edit</span><span class="copy-hi">बदलें</span></button></div><div class="editor-wrap" hidden><label class="copy-en" for="experience-en">Edit experience</label><label class="copy-hi" for="experience-hi">अनुभव बदलें</label><input id="experience-en" class="copy-en" type="text" list="experience-options-en" data-field-editor="experience" /><input id="experience-hi" class="copy-hi" type="text" list="experience-options-hi" data-field-editor="experience" /><button class="save-field" type="button" data-save-field="experience"><span class="copy-en">Save detail</span><span class="copy-hi">विवरण सेव करें</span></button></div></div>
+                <div class="field-row" data-field="goal" tabindex="-1"><span class="field-label copy-en">Your first goal <span class="required-mark">*</span></span><span class="field-label copy-hi">आपका पहला लक्ष्य <span class="required-mark">*</span></span><p class="field-value" data-field-value="goal"></p><span class="changed-badge copy-en" data-changed-badge hidden>Changed</span><span class="changed-badge copy-hi" data-changed-badge hidden>बदला हुआ</span><div class="field-actions"><button class="edit-action" type="button" data-edit-field="goal" aria-label="Edit your first goal"><span class="copy-en">Edit</span><span class="copy-hi">बदलें</span></button></div><div class="editor-wrap" hidden><label class="copy-en" for="goal-en">Edit first goal</label><label class="copy-hi" for="goal-hi">पहला लक्ष्य बदलें</label><input id="goal-en" class="copy-en" type="text" data-field-editor="goal" /><input id="goal-hi" class="copy-hi" type="text" data-field-editor="goal" /><button class="save-field" type="button" data-save-field="goal"><span class="copy-en">Save detail</span><span class="copy-hi">विवरण सेव करें</span></button></div></div>
+              </div></details>
+              <details class="review-group" data-group="time-comfort"><summary><span class="group-summary-copy"><span class="copy-en">3. Time &amp; comfort</span><span class="copy-hi">3. समय और सुविधा</span><small class="copy-en">3 details</small><small class="copy-hi">3 विवरण</small></span></summary><div class="group-body">
+                <div class="field-row" data-field="availability" tabindex="-1"><span class="field-label copy-en">Time you can give <span class="required-mark">*</span></span><span class="field-label copy-hi">आप कितना समय दे सकती हैं? <span class="required-mark">*</span></span><p class="field-value" data-field-value="availability"></p><div class="field-actions"><button class="edit-action" type="button" data-edit-field="availability" aria-label="Edit time you can give"><span class="copy-en">Edit</span><span class="copy-hi">बदलें</span></button></div><div class="editor-wrap" hidden><label class="copy-en" for="availability-en">Edit available time</label><label class="copy-hi" for="availability-hi">उपलब्ध समय बदलें</label><input id="availability-en" class="copy-en" type="text" list="availability-options-en" data-field-editor="availability" /><input id="availability-hi" class="copy-hi" type="text" list="availability-options-hi" data-field-editor="availability" /><button class="save-field" type="button" data-save-field="availability"><span class="copy-en">Save detail</span><span class="copy-hi">विवरण सेव करें</span></button></div></div>
+                <div class="field-row" data-field="language" tabindex="-1"><span class="field-label copy-en">Plan language <span class="required-mark">*</span></span><span class="field-label copy-hi">योजना की भाषा <span class="required-mark">*</span></span><p class="field-value" data-field-value="language"></p><div class="field-actions"><button class="edit-action" type="button" data-edit-field="language" aria-label="Edit plan language"><span class="copy-en">Edit</span><span class="copy-hi">बदलें</span></button></div><div class="editor-wrap" hidden><label class="copy-en" for="language-en">Edit plan language</label><label class="copy-hi" for="language-hi">योजना की भाषा बदलें</label><input id="language-en" class="copy-en" type="text" list="language-options-en" data-field-editor="language" /><input id="language-hi" class="copy-hi" type="text" list="language-options-hi" data-field-editor="language" /><button class="save-field" type="button" data-save-field="language"><span class="copy-en">Save detail</span><span class="copy-hi">विवरण सेव करें</span></button></div></div>
+                <div class="field-row" data-field="accessibility" tabindex="-1"><span class="field-label copy-en">What makes learning easier? <span class="required-mark">*</span></span><span class="field-label copy-hi">सीखना आसान बनाने के लिए क्या चाहिए? <span class="required-mark">*</span></span><p class="field-value" data-field-value="accessibility"></p><div class="field-actions"><button class="edit-action" type="button" data-edit-field="accessibility" aria-label="Edit learning support"><span class="copy-en">Edit</span><span class="copy-hi">बदलें</span></button></div><div class="editor-wrap" hidden><label class="copy-en" for="accessibility-en">Edit learning support</label><label class="copy-hi" for="accessibility-hi">सीखने की सुविधा बदलें</label><input id="accessibility-en" class="copy-en" type="text" list="accessibility-options-en" data-field-editor="accessibility" /><input id="accessibility-hi" class="copy-hi" type="text" list="accessibility-options-hi" data-field-editor="accessibility" /><button class="save-field" type="button" data-save-field="accessibility"><span class="copy-en">Save detail</span><span class="copy-hi">विवरण सेव करें</span></button></div></div>
+              </div></details>
+              <details class="review-group" data-group="preferences-permission"><summary><span class="group-summary-copy"><span class="copy-en">4. Preferences &amp; permission</span><span class="copy-hi">4. पसंद और अनुमति</span><small class="copy-en">2 details · 2 choices</small><small class="copy-hi">2 विवरण · 2 चुनाव</small></span></summary><div class="group-body">
+                <div class="field-row" data-field="format" tabindex="-1"><span class="field-label copy-en">How you prefer to learn <span class="required-mark">*</span></span><span class="field-label copy-hi">आप कैसे सीखना पसंद करेंगी? <span class="required-mark">*</span></span><p class="field-value" data-field-value="format"></p><div class="field-actions"><button class="edit-action" type="button" data-edit-field="format" aria-label="Edit learning format"><span class="copy-en">Edit</span><span class="copy-hi">बदलें</span></button></div><div class="editor-wrap" hidden><label class="copy-en" for="format-en">Edit learning format</label><label class="copy-hi" for="format-hi">सीखने का तरीका बदलें</label><input id="format-en" class="copy-en" type="text" list="format-options-en" data-field-editor="format" /><input id="format-hi" class="copy-hi" type="text" list="format-options-hi" data-field-editor="format" /><button class="save-field" type="button" data-save-field="format"><span class="copy-en">Save detail</span><span class="copy-hi">विवरण सेव करें</span></button></div></div>
+                <div class="field-row" data-field="city" tabindex="-1"><span class="field-label copy-en">City (optional)</span><span class="field-label copy-hi">शहर (वैकल्पिक)</span><p class="field-value" data-field-value="city"></p><div class="field-actions"><button class="edit-action" type="button" data-edit-field="city" aria-label="Edit city"><span class="copy-en">Edit</span><span class="copy-hi">बदलें</span></button></div><div class="editor-wrap" hidden><label class="copy-en" for="city-en">Edit city</label><label class="copy-hi" for="city-hi">शहर बदलें</label><input id="city-en" class="copy-en" type="text" data-field-editor="city" /><input id="city-hi" class="copy-hi" type="text" data-field-editor="city" /><button class="save-field" type="button" data-save-field="city"><span class="copy-en">Save detail</span><span class="copy-hi">विवरण सेव करें</span></button></div></div>
+                <div class="field-row consent-row" data-field="consent"><label class="consent-label"><input type="checkbox" data-consent="plan" required aria-required="true" /><span class="copy-en">I agree SakhiCircle may use these reviewed details to create my private 4-week plan. <span class="required-mark">*</span></span><span class="copy-hi">मैं सहमत हूँ कि SakhiCircle इन जाँचे हुए विवरणों से मेरी निजी 4-सप्ताह की योजना बनाए। <span class="required-mark">*</span></span></label><small class="consent-help copy-en">Required. Voice and transcript text can never select this.</small><small class="consent-help copy-hi">ज़रूरी। आवाज़ या ट्रांसक्रिप्ट इसे कभी नहीं चुन सकती।</small></div>
+                <div class="field-row consent-row"><label class="consent-label"><input type="checkbox" data-consent="matching" /><span class="copy-en">Also use hobby, language, schedule, format and city to suggest compatible people. You can change this later.</span><span class="copy-hi">शौक, भाषा, समय, सीखने का तरीका और शहर इस्तेमाल करके उपयुक्त लोगों के सुझाव भी दें। इसे बाद में बदल सकती हैं।</span></label><small class="consent-help copy-en">Optional. This is not needed to create your plan.</small><small class="consent-help copy-hi">वैकल्पिक। आपकी योजना बनाने के लिए यह ज़रूरी नहीं है।</small></div>
+              </div></details>
+            </div>
+            <div class="button-row review-actions"><button class="secondary-button" type="button" data-go-stage="capture"><span class="copy-en">← Back to my words</span><span class="copy-hi">← अपने शब्दों पर वापस जाएँ</span></button><button class="primary-button" type="button" data-confirm disabled><span class="copy-en">Confirm and create my 4-week plan</span><span class="copy-hi">पुष्टि करें और मेरी 4-सप्ताह की योजना बनाएँ</span></button></div>
+            <p class="storage-footnote copy-en">After confirmation, only reviewed structured details are saved. The transcript is discarded; raw audio is never stored.</p><p class="storage-footnote copy-hi">पुष्टि के बाद केवल जाँचे हुए विवरण सेव होंगे। ट्रांसक्रिप्ट हटा दी जाएगी और कच्ची ऑडियो कभी सेव नहीं होगी।</p>
+          </div>
+        </div>
+      </section>
+    </main>
+    <datalist id="experience-options-en"><option value="New to this"></option><option value="Restarting after many years"></option><option value="Some recent practice"></option></datalist><datalist id="experience-options-hi"><option value="पहली बार सीख रही हूँ"></option><option value="कई वर्षों बाद फिर शुरू कर रही हूँ"></option><option value="हाल में थोड़ा अभ्यास किया है"></option></datalist>
+    <datalist id="availability-options-en"><option value="15 minutes · 3 days a week"></option><option value="30 minutes · 4 days a week"></option><option value="45 minutes · 5 days a week"></option></datalist><datalist id="availability-options-hi"><option value="15 मिनट · सप्ताह में 3 दिन"></option><option value="30 मिनट · सप्ताह में 4 दिन"></option><option value="45 मिनट · सप्ताह में 5 दिन"></option></datalist>
+    <datalist id="language-options-en"><option value="English"></option><option value="Hindi"></option><option value="Hindi instructions · English material names"></option></datalist><datalist id="language-options-hi"><option value="अंग्रेज़ी"></option><option value="हिंदी"></option><option value="निर्देश हिंदी में · सामग्री के नाम अंग्रेज़ी में"></option></datalist>
+    <datalist id="accessibility-options-en"><option value="No support needed right now"></option><option value="Larger text · seated alternatives"></option></datalist><datalist id="accessibility-options-hi"><option value="अभी किसी सुविधा की ज़रूरत नहीं"></option><option value="बड़ा टेक्स्ट · बैठकर करने के विकल्प"></option></datalist>
+    <datalist id="format-options-en"><option value="At home · individual"></option><option value="At home · small online group"></option><option value="In person · small group"></option></datalist><datalist id="format-options-hi"><option value="घर पर · अकेले"></option><option value="घर पर · छोटा ऑनलाइन समूह"></option><option value="सामने · छोटा समूह"></option></datalist>
+    <p class="prototype-toast" role="status" aria-live="polite" hidden></p><p class="visually-hidden" data-live-status aria-live="polite"></p>
+    <script>
+      const body = document.body;
+      const params = new URLSearchParams(window.location.search);
+      const supportedScenarios = ["ready", "empty", "mic-denied", "unsupported", "missing", "changed", "save-error", "success"];
+      const requestedLocale = ["en", "hi"].includes(params.get("locale")) ? params.get("locale") : "en";
+      const requestedScenario = supportedScenarios.includes(params.get("scenario")) ? params.get("scenario") : "ready";
+      const reviewScenarios = ["missing", "changed", "save-error", "success"];
+      const requestedStage = ["capture", "review"].includes(params.get("stage")) ? params.get("stage") : (reviewScenarios.includes(requestedScenario) ? "review" : "capture");
+      const samples = {
+        en: { transcript: "I painted a little when I was younger. I want to restart watercolours and make a greeting card for my granddaughter. I can practise for 30 minutes, four days a week. I prefer Hindi instructions, larger text, seated alternatives, and learning at home with a small online group. I live in Pune.", fields: { hobby: "Watercolour painting", experience: "Restarting after many years", goal: "Paint a greeting card for my granddaughter", availability: "30 minutes · 4 days a week", language: "Hindi instructions · English material names", accessibility: "Larger text · seated alternatives", format: "At home · small online group", city: "Pune" } },
+        hi: { transcript: "मैंने युवावस्था में थोड़ी पेंटिंग की थी। अब मैं वॉटरकलर फिर शुरू करके अपनी नातिन के लिए शुभकामना कार्ड बनाना चाहती हूँ। मैं सप्ताह में चार दिन, 30 मिनट अभ्यास कर सकती हूँ। मुझे हिंदी में निर्देश, बड़ा टेक्स्ट, बैठकर करने के विकल्प और घर से छोटे ऑनलाइन समूह में सीखना पसंद है। मैं पुणे में रहती हूँ।", fields: { hobby: "वॉटरकलर पेंटिंग", experience: "कई वर्षों बाद फिर शुरू कर रही हूँ", goal: "अपनी नातिन के लिए शुभकामना कार्ड बनाना", availability: "30 मिनट · सप्ताह में 4 दिन", language: "निर्देश हिंदी में · सामग्री के नाम अंग्रेज़ी में", accessibility: "बड़ा टेक्स्ट · बैठकर करने के विकल्प", format: "घर पर · छोटा ऑनलाइन समूह", city: "पुणे" } },
+      };
+      const requiredFieldKeys = ["hobby", "experience", "goal", "availability", "language", "accessibility", "format"];
+      const editableFieldKeys = [...requiredFieldKeys, "city"];
+      const constrainedFieldKeys = ["experience", "availability", "language", "accessibility", "format"];
+      const initialFields = requestedScenario === "empty"
+        ? { hobby: "", experience: "", goal: "", availability: "", language: "", accessibility: "", format: "", city: "" }
+        : { ...samples[requestedLocale].fields };
+      const onboardingDraft = {
+        transcript: ["empty", "success"].includes(requestedScenario) ? "" : samples[requestedLocale].transcript,
+        fields: initialFields,
+        pendingEdits: {},
+        fieldErrors: {},
+        detailsNeedUpdate: false,
+        planConsent: requestedScenario === "save-error",
+        matchingConsent: false,
+        transcriptReviewed: requestedScenario === "save-error" || requestedScenario === "success",
+        changedFields: requestedScenario === "changed" ? ["goal"] : [],
+      };
+      if (requestedScenario === "missing") onboardingDraft.fields.goal = "";
+      if (requestedScenario === "changed") onboardingDraft.fields.goal = requestedLocale === "hi" ? "अपनी नातिन के लिए एक वॉटरकलर कार्ड बनाना" : "Paint one watercolour card for my granddaughter";
+      body.dataset.locale = requestedLocale; body.dataset.stage = requestedStage; body.dataset.scenario = requestedScenario;
+      const liveStatus = document.querySelector("[data-live-status]");
+      const localeText = (english, hindi) => body.dataset.locale === "hi" ? hindi : english;
+      const visiblePanel = () => document.querySelector(`.stage-${body.dataset.stage} .copy-${body.dataset.locale}`);
+      const announce = (english, hindi) => { liveStatus.textContent = localeText(english, hindi); };
+      const syncAccessibleNames = () => {
+        const hindi = body.dataset.locale === "hi";
+        document.documentElement.lang = hindi ? "hi" : "en-IN";
+        document.querySelector("[data-brand]").setAttribute("aria-label", hindi ? "SakhiCircle ऑनबोर्डिंग" : "SakhiCircle onboarding");
+        document.querySelector("[data-profile]").setAttribute("aria-label", hindi ? "मीरा शर्मा प्रोफ़ाइल" : "Meera Sharma profile");
+        document.querySelector("[data-primary-nav]").setAttribute("aria-label", hindi ? "मुख्य नेविगेशन" : "Primary navigation");
+        document.querySelector("[data-progress]").setAttribute("aria-label", hindi ? "ऑनबोर्डिंग प्रगति" : "Onboarding progress");
+        document.querySelector("[data-help]").setAttribute("aria-label", hindi ? "ऑनबोर्डिंग सहायता" : "Onboarding help");
+        document.querySelectorAll("[data-edit-field]").forEach((button) => {
+          const labels = { hobby: ["Edit what you want to learn", "आप क्या सीखना चाहती हैं, उसे बदलें"], experience: ["Edit your experience", "अपना अनुभव बदलें"], goal: ["Edit your first goal", "अपना पहला लक्ष्य बदलें"], availability: ["Edit time you can give", "उपलब्ध समय बदलें"], language: ["Edit plan language", "योजना की भाषा बदलें"], accessibility: ["Edit learning support", "सीखने की सुविधा बदलें"], format: ["Edit learning format", "सीखने का तरीका बदलें"], city: ["Edit city", "शहर बदलें"] };
+          button.setAttribute("aria-label", labels[button.dataset.editField][hindi ? 1 : 0]);
+        });
+      };
+      const allowedChoices = Object.fromEntries(constrainedFieldKeys.map((key) => [
+        key,
+        new Set([...document.querySelectorAll(`datalist[id^="${key}-options"] option`)].map((option) => option.value)),
+      ]));
+      const missingFields = () => requiredFieldKeys.filter((key) => !onboardingDraft.fields[key].trim());
+      const syncViews = () => {
+        document.querySelectorAll("[data-shared-transcript]").forEach((field) => { if (field.value !== onboardingDraft.transcript) field.value = onboardingDraft.transcript; });
+        Object.entries(onboardingDraft.fields).forEach(([key, value]) => {
+          document.querySelectorAll(`[data-field-value="${key}"]`).forEach((node) => { node.textContent = value || localeText("Not provided", "नहीं दिया गया"); });
+          const editorValue = Object.hasOwn(onboardingDraft.pendingEdits, key) ? onboardingDraft.pendingEdits[key] : value;
+          document.querySelectorAll(`[data-field-editor="${key}"]`).forEach((field) => {
+            if (field.value !== editorValue) field.value = editorValue;
+            field.setAttribute("aria-invalid", onboardingDraft.fieldErrors[key] ? "true" : "false");
+            if (requiredFieldKeys.includes(key)) field.setAttribute("aria-required", "true");
+          });
+        });
+        document.querySelectorAll('[data-consent="plan"]').forEach((field) => { field.checked = onboardingDraft.planConsent; });
+        document.querySelectorAll('[data-consent="matching"]').forEach((field) => { field.checked = onboardingDraft.matchingConsent; });
+        const missing = missingFields();
+        editableFieldKeys.forEach((key) => {
+          const row = document.querySelector(`[data-field="${key}"]`);
+          const isMissing = requiredFieldKeys.includes(key) && missing.includes(key);
+          row.classList.toggle("is-missing", isMissing);
+          let missingBadge = row.querySelector("[data-missing-badge]");
+          if (!missingBadge) {
+            missingBadge = document.createElement("span");
+            missingBadge.className = "missing-badge";
+            missingBadge.dataset.missingBadge = "";
+            missingBadge.setAttribute("role", "status");
+            row.querySelector(".field-value").after(missingBadge);
+          }
+          missingBadge.textContent = localeText("Please add this", "कृपया यह जोड़ें");
+          missingBadge.hidden = !isMissing;
+          let changedBadge = row.querySelector("[data-changed-badge]");
+          if (!changedBadge) {
+            changedBadge = document.createElement("span");
+            changedBadge.className = "changed-badge";
+            changedBadge.dataset.changedBadge = "";
+            row.querySelector(".field-value").after(changedBadge);
+          }
+          changedBadge.textContent = localeText("Changed", "बदला हुआ");
+          changedBadge.hidden = !onboardingDraft.changedFields.includes(key);
+          const editorWrap = row.querySelector(".editor-wrap");
+          let error = editorWrap.querySelector("[data-field-error]");
+          if (!error) {
+            error = document.createElement("span");
+            error.className = "field-error";
+            error.dataset.fieldError = "";
+            error.setAttribute("role", "alert");
+            editorWrap.append(error);
+          }
+          const errorMessages = { choice: ["Choose one of the listed options.", "सूची में दिया कोई विकल्प चुनें।"] };
+          error.textContent = onboardingDraft.fieldErrors[key] ? errorMessages[onboardingDraft.fieldErrors[key]][body.dataset.locale === "hi" ? 1 : 0] : "";
+          error.hidden = !onboardingDraft.fieldErrors[key];
+        });
+        document.querySelectorAll("[data-go-stage='review']").forEach((button) => { button.disabled = !onboardingDraft.transcript.trim(); });
+        document.querySelectorAll("[data-confirm]").forEach((button) => { button.disabled = !onboardingDraft.transcriptReviewed || !onboardingDraft.planConsent || onboardingDraft.detailsNeedUpdate || missing.length > 0 || Object.keys(onboardingDraft.fieldErrors).length > 0; });
+        document.querySelectorAll("[data-progress-step]").forEach((step) => { if (step.dataset.progressStep === body.dataset.stage) step.setAttribute("aria-current", "step"); else step.removeAttribute("aria-current"); });
+      };
+      const focusScreen = () => window.requestAnimationFrame(() => { const heading = visiblePanel()?.querySelector("[data-screen-title]") || document.querySelector(`.stage-${body.dataset.stage} [data-screen-title]`); heading?.focus(); });
+      const showToast = (english, hindi) => { const toast = document.querySelector(".prototype-toast"); toast.textContent = localeText(english, hindi); toast.hidden = false; window.setTimeout(() => { toast.hidden = true; }, 3200); };
+      const updatePreviewDetails = () => {
+        const previousFields = { ...onboardingDraft.fields };
+        const words = onboardingDraft.transcript.toLocaleLowerCase();
+        if (/pottery|clay|मिट्टी|कुम्हार/.test(words)) {
+          onboardingDraft.fields.hobby = localeText("Pottery", "पॉटरी");
+          onboardingDraft.fields.goal = localeText("Make one small clay piece", "मिट्टी की एक छोटी वस्तु बनाना");
+        } else if (/watercolou?r|वॉटरकलर/.test(words)) {
+          onboardingDraft.fields = { ...samples[body.dataset.locale].fields };
+          onboardingDraft.fields.goal = localeText("Paint one watercolour card for my granddaughter", "अपनी नातिन के लिए एक वॉटरकलर कार्ड बनाना");
+        } else {
+          onboardingDraft.fields.hobby = "";
+          onboardingDraft.fields.goal = "";
+        }
+        onboardingDraft.changedFields = Object.keys(onboardingDraft.fields).filter((key) => previousFields[key] !== onboardingDraft.fields[key]);
+        onboardingDraft.detailsNeedUpdate = false;
+      };
+      document.querySelectorAll("button[data-locale]").forEach((button) => button.addEventListener("click", () => { body.dataset.locale = button.dataset.locale; syncAccessibleNames(); syncViews(); announce("Language changed to English. Your draft is unchanged.", "भाषा हिंदी हुई। आपका ड्राफ़्ट नहीं बदला।"); focusScreen(); }));
+      document.querySelectorAll("[data-go-stage]").forEach((button) => button.addEventListener("click", () => { if (button.disabled) return; body.dataset.stage = button.dataset.goStage; if (body.dataset.stage === "review") { onboardingDraft.transcriptReviewed = false; document.querySelectorAll("[data-transcript-review]").forEach((details) => { details.open = true; }); } syncViews(); window.scrollTo({ top: 0, behavior: "instant" }); focusScreen(); }));
+      document.querySelectorAll("[data-shared-transcript]").forEach((field) => field.addEventListener("input", () => {
+        onboardingDraft.transcript = field.value;
+        onboardingDraft.transcriptReviewed = false;
+        onboardingDraft.detailsNeedUpdate = true;
+        if (["empty", "mic-denied", "unsupported"].includes(body.dataset.scenario)) body.dataset.scenario = "ready";
+        syncViews();
+      }));
+      document.querySelector("[data-transcript-review] summary").addEventListener("click", (event) => {
+        event.preventDefault();
+        const transcriptDetails = event.currentTarget.closest("details");
+        const shouldOpen = !transcriptDetails.open;
+        if (shouldOpen) document.querySelectorAll(".review-group").forEach((details) => { details.open = false; });
+        transcriptDetails.open = shouldOpen;
+      });
+      document.querySelectorAll(".review-group summary").forEach((summary) => summary.addEventListener("click", (event) => {
+        event.preventDefault();
+        const selected = summary.closest("details");
+        if (!onboardingDraft.transcriptReviewed) {
+          document.querySelector("[data-transcript-review]").open = true;
+          document.querySelectorAll(".review-group").forEach((details) => { details.open = false; });
+          announce("Check your words before opening plan details.", "योजना के विवरण से पहले अपने शब्द जाँचें।");
+          document.querySelector("[data-transcript-review] summary").focus();
+          return;
+        }
+        const shouldOpen = !selected.open;
+        document.querySelector("[data-transcript-review]").open = false;
+        document.querySelectorAll(".review-group").forEach((details) => { details.open = false; });
+        selected.open = shouldOpen;
+      }));
+      document.querySelectorAll("[data-review-transcript]").forEach((button) => button.addEventListener("click", () => {
+        onboardingDraft.transcriptReviewed = true;
+        button.closest("details").open = false;
+        document.querySelectorAll(".review-group").forEach((details) => { details.open = details.dataset.group === "learning"; });
+        syncViews(); announce("Words marked as reviewed.", "शब्द जाँचे हुए माने गए।"); document.querySelector('[data-group="learning"] summary')?.focus();
+      }));
+      document.querySelectorAll("[data-update-details]").forEach((button) => button.addEventListener("click", () => {
+        updatePreviewDetails();
+        body.dataset.scenario = onboardingDraft.changedFields.length > 0 ? "changed" : "missing";
+        syncViews(); announce("Details updated. Review the marked row and any missing items.", "विवरण अपडेट हुए। बदली पंक्ति और बाकी विवरण जाँचें।");
+      }));
+      document.querySelectorAll("[data-edit-field]").forEach((button) => button.addEventListener("click", () => {
+        const key = button.dataset.editField;
+        const row = button.closest(".field-row");
+        if (!Object.hasOwn(onboardingDraft.pendingEdits, key)) onboardingDraft.pendingEdits[key] = onboardingDraft.fields[key];
+        row.querySelector(".editor-wrap").hidden = false;
+        syncViews();
+        row.querySelector(`input.copy-${body.dataset.locale}`)?.focus();
+      }));
+      document.querySelectorAll("[data-field-editor]").forEach((editor) => editor.addEventListener("input", () => {
+        const key = editor.dataset.fieldEditor;
+        onboardingDraft.pendingEdits[key] = editor.value;
+        delete onboardingDraft.fieldErrors[key];
+        document.querySelectorAll(`[data-field-editor="${key}"]`).forEach((other) => { if (other !== editor) other.value = editor.value; });
+      }));
+      document.querySelectorAll("[data-save-field]").forEach((button) => button.addEventListener("click", () => {
+        const key = button.dataset.saveField;
+        const row = button.closest(".field-row");
+        const editor = row.querySelector(`input.copy-${body.dataset.locale}`);
+        const value = editor.value.trim();
+        if (constrainedFieldKeys.includes(key) && !allowedChoices[key].has(value)) {
+          onboardingDraft.fieldErrors[key] = "choice";
+          syncViews(); editor.focus(); return;
+        }
+        onboardingDraft.fields[key] = value;
+        delete onboardingDraft.pendingEdits[key];
+        delete onboardingDraft.fieldErrors[key];
+        onboardingDraft.changedFields = onboardingDraft.changedFields.filter((changedKey) => changedKey !== key);
+        if (["missing", "changed"].includes(body.dataset.scenario) && onboardingDraft.changedFields.length === 0) body.dataset.scenario = missingFields().length > 0 ? "missing" : "ready";
+        row.querySelector(".editor-wrap").hidden = true;
+        syncViews(); announce("Detail saved in this private draft.", "विवरण इस निजी ड्राफ़्ट में सेव हुआ।"); row.focus();
+      }));
+      document.querySelectorAll("[data-consent]").forEach((field) => field.addEventListener("change", () => { if (field.dataset.consent === "plan") onboardingDraft.planConsent = field.checked; if (field.dataset.consent === "matching") onboardingDraft.matchingConsent = field.checked; syncViews(); }));
+      document.querySelectorAll("[data-voice-button]").forEach((button) => button.addEventListener("click", () => { if (["mic-denied", "unsupported"].includes(body.dataset.scenario)) { visiblePanel()?.querySelector(`[data-scenario="${body.dataset.scenario}"]`)?.focus(); return; } const listening = button.classList.toggle("listening"); button.querySelector("[data-voice-label]").textContent = localeText(listening ? "Stop voice preview" : "Start speaking", listening ? "आवाज़ प्रीव्यू बंद करें" : "बोलना शुरू करें"); button.parentElement.querySelector("[data-listening-status]").textContent = localeText(listening ? "Voice preview only—this prototype does not capture audio. Type above to continue." : "Typing works just as well.", listening ? "यह केवल आवाज़ का प्रीव्यू है—यह प्रोटोटाइप ऑडियो नहीं लेता। जारी रखने के लिए ऊपर लिखें।" : "लिखकर बताना भी उतना ही आसान है।"); }));
+      document.querySelector("[data-help]").addEventListener("click", (event) => { const panel = document.querySelector("[data-help-panel]"); panel.hidden = !panel.hidden; event.currentTarget.setAttribute("aria-expanded", String(!panel.hidden)); });
+      document.querySelector("[data-profile]").addEventListener("click", () => { showToast("Profile settings are outside this preview. Your draft is safe.", "प्रोफ़ाइल सेटिंग इस प्रीव्यू का हिस्सा नहीं है। आपका ड्राफ़्ट सुरक्षित है।"); });
+      document.querySelectorAll("[data-preview-link]").forEach((link) => link.addEventListener("click", (event) => { event.preventDefault(); showToast("Your draft is safe. This destination is outside the SC-300 preview.", "आपका ड्राफ़्ट सुरक्षित है। यह जगह SC-300 प्रीव्यू का हिस्सा नहीं है।"); }));
+      document.querySelectorAll("[data-confirm]").forEach((button) => button.addEventListener("click", () => { button.disabled = true; button.setAttribute("aria-busy", "true"); const finish = () => { button.removeAttribute("aria-busy"); if (body.dataset.scenario === "save-error") document.querySelector('.scenario-panel[data-scenario="save-error"]')?.focus(); else { onboardingDraft.transcript = ""; syncViews(); body.dataset.scenario = "success"; window.scrollTo({ top: 0, behavior: "instant" }); document.querySelector('.success-screen[data-scenario="success"]')?.focus(); announce("Plan details accepted. Transcript discarded.", "योजना के विवरण स्वीकार हुए। ट्रांसक्रिप्ट हटा दी गई।"); } }; window.setTimeout(finish, 450); }));
+      document.querySelectorAll("[data-retry]").forEach((button) => button.addEventListener("click", () => { body.dataset.scenario = "ready"; syncViews(); showToast("Ready to retry. Your reviewed draft is unchanged.", "फिर कोशिश के लिए तैयार। आपका जाँचा हुआ ड्राफ़्ट नहीं बदला।"); document.querySelector("[data-confirm]").focus(); }));
+      syncAccessibleNames(); syncViews();
+    </script>
+  </body>
+</html>

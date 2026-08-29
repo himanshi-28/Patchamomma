@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-16T23:05:00+05:30",
+  "title": "Design System: SakhiCircle",
+  "extensions": {
+    "colorMeta": {
+      "true-white": { "role": "neutral", "displayName": "True White", "canonical": "oklch(1 0 0)", "tonalRamp": ["oklch(0.15 0 0)", "oklch(0.27 0 0)", "oklch(0.39 0 0)", "oklch(0.51 0 0)", "oklch(0.63 0 0)", "oklch(0.75 0 0)", "oklch(0.87 0 0)", "oklch(0.95 0 0)"] },
+      "quiet-rose-surface": { "role": "neutral", "displayName": "Quiet Rose Surface", "canonical": "oklch(0.97 0.008 355)", "tonalRamp": ["oklch(0.15 0.008 355)", "oklch(0.27 0.008 355)", "oklch(0.39 0.008 355)", "oklch(0.51 0.008 355)", "oklch(0.63 0.008 355)", "oklch(0.75 0.008 355)", "oklch(0.87 0.008 355)", "oklch(0.95 0.008 355)"] },
+      "quiet-rose-strong": { "role": "neutral", "displayName": "Quiet Rose Strong", "canonical": "oklch(0.93 0.015 355)", "tonalRamp": ["oklch(0.15 0.015 355)", "oklch(0.27 0.015 355)", "oklch(0.39 0.015 355)", "oklch(0.51 0.015 355)", "oklch(0.63 0.015 355)", "oklch(0.75 0.015 355)", "oklch(0.87 0.015 355)", "oklch(0.95 0.015 355)"] },
+      "rooted-ink": { "role": "neutral", "displayName": "Rooted Ink", "canonical": "oklch(0.24 0.025 355)", "tonalRamp": ["oklch(0.15 0.025 355)", "oklch(0.27 0.025 355)", "oklch(0.39 0.025 355)", "oklch(0.51 0.025 355)", "oklch(0.63 0.025 355)", "oklch(0.75 0.025 355)", "oklch(0.87 0.025 355)", "oklch(0.95 0.025 355)"] },
+      "steady-muted": { "role": "neutral", "displayName": "Steady Muted", "canonical": "oklch(0.43 0.025 355)", "tonalRamp": ["oklch(0.15 0.025 355)", "oklch(0.27 0.025 355)", "oklch(0.39 0.025 355)", "oklch(0.51 0.025 355)", "oklch(0.63 0.025 355)", "oklch(0.75 0.025 355)", "oklch(0.87 0.025 355)", "oklch(0.95 0.025 355)"] },
+      "gentle-border": { "role": "neutral", "displayName": "Gentle Border", "canonical": "oklch(0.84 0.018 355)", "tonalRamp": ["oklch(0.15 0.018 355)", "oklch(0.27 0.018 355)", "oklch(0.39 0.018 355)", "oklch(0.51 0.018 355)", "oklch(0.63 0.018 355)", "oklch(0.75 0.018 355)", "oklch(0.87 0.018 355)", "oklch(0.95 0.018 355)"] },
+      "sakhi-rose": { "role": "primary", "displayName": "Sakhi Rose", "canonical": "oklch(0.52 0.17 355)", "tonalRamp": ["oklch(0.15 0.17 355)", "oklch(0.27 0.17 355)", "oklch(0.39 0.17 355)", "oklch(0.51 0.17 355)", "oklch(0.63 0.17 355)", "oklch(0.75 0.17 355)", "oklch(0.87 0.12 355)", "oklch(0.95 0.05 355)"] },
+      "sakhi-rose-deep": { "role": "primary", "displayName": "Deep Sakhi Rose", "canonical": "oklch(0.45 0.16 355)", "tonalRamp": ["oklch(0.15 0.16 355)", "oklch(0.27 0.16 355)", "oklch(0.39 0.16 355)", "oklch(0.51 0.16 355)", "oklch(0.63 0.16 355)", "oklch(0.75 0.16 355)", "oklch(0.87 0.11 355)", "oklch(0.95 0.05 355)"] },
+      "sakhi-rose-soft": { "role": "primary", "displayName": "Soft Sakhi Rose", "canonical": "oklch(0.93 0.04 355)", "tonalRamp": ["oklch(0.15 0.04 355)", "oklch(0.27 0.04 355)", "oklch(0.39 0.04 355)", "oklch(0.51 0.04 355)", "oklch(0.63 0.04 355)", "oklch(0.75 0.04 355)", "oklch(0.87 0.04 355)", "oklch(0.95 0.04 355)"] },
+      "trust-teal": { "role": "secondary", "displayName": "Trust Teal", "canonical": "oklch(0.42 0.09 185)", "tonalRamp": ["oklch(0.15 0.09 185)", "oklch(0.27 0.09 185)", "oklch(0.39 0.09 185)", "oklch(0.51 0.09 185)", "oklch(0.63 0.09 185)", "oklch(0.75 0.09 185)", "oklch(0.87 0.07 185)", "oklch(0.95 0.035 185)"] },
+      "trust-teal-soft": { "role": "secondary", "displayName": "Soft Trust Teal", "canonical": "oklch(0.93 0.035 185)", "tonalRamp": ["oklch(0.15 0.035 185)", "oklch(0.27 0.035 185)", "oklch(0.39 0.035 185)", "oklch(0.51 0.035 185)", "oklch(0.63 0.035 185)", "oklch(0.75 0.035 185)", "oklch(0.87 0.035 185)", "oklch(0.95 0.035 185)"] },
+      "focus-blue": { "role": "tertiary", "displayName": "Focus Blue", "canonical": "oklch(0.58 0.2 255)", "tonalRamp": ["oklch(0.15 0.2 255)", "oklch(0.27 0.2 255)", "oklch(0.39 0.2 255)", "oklch(0.51 0.2 255)", "oklch(0.63 0.2 255)", "oklch(0.75 0.18 255)", "oklch(0.87 0.1 255)", "oklch(0.95 0.04 255)"] },
+      "error-red": { "role": "tertiary", "displayName": "Error Red", "canonical": "oklch(0.48 0.18 25)", "tonalRamp": ["oklch(0.15 0.18 25)", "oklch(0.27 0.18 25)", "oklch(0.39 0.18 25)", "oklch(0.51 0.18 25)", "oklch(0.63 0.18 25)", "oklch(0.75 0.16 25)", "oklch(0.87 0.09 25)", "oklch(0.95 0.04 25)"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "One screen-level promise or next step." },
+      "headline": { "displayName": "Headline", "purpose": "Section headings." },
+      "body": { "displayName": "Body", "purpose": "All reading copy in English and Hindi." },
+      "label": { "displayName": "Label", "purpose": "Controls, navigation, and field labels." }
+    },
+    "shadows": [
+      { "name": "raised-mobile-navigation", "value": "0 -2px 8px oklch(0.24 0.025 355 / 0.12)", "purpose": "Separate the fixed mobile navigation from scrolling content." }
+    ],
+    "motion": [
+      { "name": "fast", "value": "180ms", "purpose": "Hover, focus, and immediate state feedback." },
+      { "name": "ease-out", "value": "cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "Responsive state transitions without decorative delay." }
+    ],
+    "breakpoints": [
+      { "name": "mobile-stack", "value": "780px" },
+      { "name": "desktop-rail", "value": "900px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The single clear next step in a flow.",
+      "html": "<button class=\"ds-btn-primary\">Choose my first hobby</button>",
+      "css": ".ds-btn-primary{min-height:54px;padding:12px 20px;border:0;border-radius:var(--radius-sm,8px);background:var(--color-primary,oklch(0.52 0.17 355));color:white;font:800 18px/1.55 system-ui,sans-serif;cursor:pointer;transition:background 180ms cubic-bezier(0.22,1,0.36,1)}.ds-btn-primary:hover{background:var(--color-primary-hover,oklch(0.45 0.16 355))}.ds-btn-primary:focus-visible{outline:3px solid var(--color-focus,oklch(0.58 0.2 255));outline-offset:3px}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "A full-size alternative that never competes with the primary action.",
+      "html": "<button class=\"ds-btn-secondary\">Continue with Google</button>",
+      "css": ".ds-btn-secondary{min-height:54px;padding:12px 20px;border:2px solid var(--color-ink,oklch(0.24 0.025 355));border-radius:var(--radius-sm,8px);background:var(--color-bg,white);color:var(--color-ink,oklch(0.24 0.025 355));font:800 18px/1.55 system-ui,sans-serif;cursor:pointer}.ds-btn-secondary:hover{background:var(--color-surface,oklch(0.97 0.008 355))}.ds-btn-secondary:focus-visible{outline:3px solid var(--color-focus,oklch(0.58 0.2 255));outline-offset:3px}"
+    },
+    {
+      "name": "Email Field",
+      "kind": "input",
+      "refersTo": "text-input",
+      "description": "A labelled 54px field with an immediately visible focus state.",
+      "html": "<label class=\"ds-field\"><span>Email address</span><input type=\"email\" placeholder=\"you@example.com\"></label>",
+      "css": ".ds-field{display:grid;gap:8px;color:var(--color-ink,oklch(0.24 0.025 355));font:750 18px/1.55 system-ui,sans-serif}.ds-field input{min-height:54px;padding:12px 16px;border:2px solid var(--color-border,oklch(0.84 0.018 355));border-radius:var(--radius-sm,8px);background:white;color:var(--color-ink,oklch(0.24 0.025 355));font:400 18px/1.55 system-ui,sans-serif}.ds-field input:focus-visible{border-color:var(--color-focus,oklch(0.58 0.2 255));outline:3px solid var(--color-focus,oklch(0.58 0.2 255));outline-offset:3px}"
+    },
+    {
+      "name": "Three-Destination Navigation",
+      "kind": "nav",
+      "refersTo": "primary-navigation",
+      "description": "Exactly three visible icon-plus-label destinations.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Primary navigation\"><a class=\"ds-nav-active\" href=\"#today\">▣ <span>Today</span></a><a href=\"#circle\">◎ <span>My Circle</span></a><a href=\"#mentors\">◇ <span>Mentors</span></a></nav>",
+      "css": ".ds-nav{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:8px;background:white;box-shadow:0 -2px 8px oklch(0.24 0.025 355/.12)}.ds-nav a{display:flex;min-height:62px;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:4px 8px;border-radius:8px;color:var(--color-muted,oklch(0.43 0.025 355));font:750 14px/1.3 system-ui,sans-serif;text-decoration:none}.ds-nav a:hover{background:var(--color-surface,oklch(0.97 0.008 355))}.ds-nav a:focus-visible{outline:3px solid var(--color-focus,oklch(0.58 0.2 255));outline-offset:2px}.ds-nav .ds-nav-active{color:var(--color-primary,oklch(0.52 0.17 355));background:var(--color-primary-soft,oklch(0.93 0.04 355))}"
+    },
+    {
+      "name": "Next Step Card",
+      "kind": "card",
+      "refersTo": "next-step-card",
+      "description": "A quiet tonal card that makes one meaningful next action obvious.",
+      "html": "<section class=\"ds-next-card\"><div><strong>Your next step</strong><h2>Your next chapter starts here</h2><p>Tell us what you have always wanted to learn.</p></div><button>Choose my first hobby</button></section>",
+      "css": ".ds-next-card{display:flex;align-items:end;justify-content:space-between;gap:32px;padding:32px;border-radius:16px;background:var(--color-surface,oklch(0.97 0.008 355));color:var(--color-ink,oklch(0.24 0.025 355));font:400 18px/1.55 system-ui,sans-serif}.ds-next-card strong{color:var(--color-primary,oklch(0.52 0.17 355))}.ds-next-card h2{max-width:15ch;margin:12px 0;font-size:40px;line-height:1.18}.ds-next-card p{margin:0;color:var(--color-muted,oklch(0.43 0.025 355))}.ds-next-card button{min-height:54px;padding:12px 20px;border:0;border-radius:8px;background:var(--color-primary,oklch(0.52 0.17 355));color:white;font-weight:800}.ds-next-card button:hover{background:var(--color-primary-hover,oklch(0.45 0.16 355))}.ds-next-card button:focus-visible{outline:3px solid var(--color-focus,oklch(0.58 0.2 255));outline-offset:3px}"
+    },
+    {
+      "name": "Support Panel",
+      "kind": "custom",
+      "refersTo": "support-panel",
+      "description": "Plain-language help shown in context without leaving the task.",
+      "html": "<aside class=\"ds-support\"><strong>You are never stuck here.</strong><span>Every voice step also works with text.</span></aside>",
+      "css": ".ds-support{display:grid;gap:6px;padding:18px;border-radius:12px;background:var(--color-teal-soft,oklch(0.93 0.035 185));color:var(--color-ink,oklch(0.24 0.025 355));font:400 18px/1.55 system-ui,sans-serif}.ds-support strong{font-weight:800}.ds-support:focus-within{outline:3px solid var(--color-focus,oklch(0.58 0.2 255));outline-offset:3px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Trusted Clubhouse",
+    "overview": "SakhiCircle feels like entering a well-run community space where the welcome is immediate, the next activity is obvious, and help is always within reach. It carries Evergreen Club’s clarity, familiar real-world mental models, and strong icon-plus-label cues without reproducing its branding or layout.\n\nThe shell is calm, flat, and respectful. Rose identifies SakhiCircle and the primary next step; teal identifies help, trust, and supportive actions. The system treats users as experienced adults and rejects generic social feeds, patronizing senior-wellness visuals, clinical dashboards, voice-only control, and dense enterprise navigation.",
+    "keyCharacteristics": [
+      "Three clearly labelled primary destinations: Today, My Circle, and Mentors.",
+      "18px body copy, 48px minimum targets, high contrast, and visible focus.",
+      "Voice assistance paired with transcripts, editing, confirmation, and text alternatives.",
+      "Real-world confirmations such as a plainly structured session ticket.",
+      "Respectful, people-centred imagery of Indian women aged 45 and above."
+    ],
+    "rules": [
+      { "name": "The Calm Shell Rule", "body": "Brand and category colors never compete with navigation, labels, or reading content.", "section": "colors" },
+      { "name": "The Meaningful Color Rule", "body": "Color communicates action, category, or state; it is never scattered as decoration.", "section": "colors" },
+      { "name": "The Read-It-Once Rule", "body": "A user should understand every heading, label, and confirmation on the first reading.", "section": "typography" },
+      { "name": "The Flat-Until-Needed Rule", "body": "If a surface is understandable without a shadow, it must not have one.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep default body text at 18px and every interactive target at least 48px.",
+      "Do pair every important icon with a visible text label.",
+      "Do expose contextual ‘Need help?’ and ‘How this works’ guidance.",
+      "Do show transcripts, editing, and confirmation beside every voice interaction.",
+      "Do test core tasks with women aged 45 and above."
+    ],
+    "donts": [
+      "Don't reproduce a generic social-media feed or hobby marketplace where popularity replaces purposeful learning.",
+      "Don't use infantilizing ‘senior wellness’ imagery, patronizing copy, oversized decoration, or assumptions about frailty.",
+      "Don't create clinical mental-health dashboards or medicalized claims about loneliness and well-being.",
+      "Don't ship voice-only experiences that hide transcripts, remove user control, or fail without speech input.",
+      "Don't create dense enterprise dashboards with tiny text, weak contrast, unexplained scores, or complex navigation."
+    ]
+  }
+}

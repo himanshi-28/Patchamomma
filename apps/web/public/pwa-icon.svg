@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="SakhiCircle sparkles mark">
+  <rect width="512" height="512" rx="96" fill="#f8efda"/>
+  <circle cx="256" cy="256" r="176" fill="#7a8450"/>
+  <g transform="translate(112 112) scale(12)" fill="none" stroke="#10140b" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+    <path d="M5 3v4M3 5h4M19 17v4M17 19h4"/>
+  </g>
+</svg>
