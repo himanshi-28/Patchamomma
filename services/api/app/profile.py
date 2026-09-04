@@ -3,6 +3,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 Experience = Literal[
+    "",
     "New to this",
     "Restarting after many years",
     "Some recent practice",
@@ -42,7 +43,7 @@ class LearningWishProfile(BaseModel):
 
     hobby: str = Field(min_length=1, max_length=120)
     experience: Experience
-    goal: str = Field(min_length=1, max_length=240)
+    goal: str = Field(default="", max_length=240)
     availability: Availability
     language: PlanLanguage
     accessibility: Accessibility

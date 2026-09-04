@@ -15,6 +15,18 @@ class Settings(BaseSettings):
     gemini_api_key: SecretStr | None = None
     firebase_project_id: str | None = None
     firebase_app_id: str | None = None
+    firestore_database_id: str | None = None
+    analytics_location: str | None = None
+    analytics_private_dataset_id: str | None = None
+    analytics_table_id: str | None = None
+    analytics_reporting_dataset_id: str | None = None
+    analytics_reporting_view_id: str | None = None
+    analytics_queue_id: str | None = None
+    analytics_task_service_account: str | None = None
+    analytics_task_audience: str | None = None
+    analytics_hmac_secret_name: str | None = None
+    analytics_hmac_secret_versions: list[str] = Field(default_factory=list)
+    analytics_current_hmac_secret_version: str | None = None
     allowed_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
     model_config = SettingsConfigDict(

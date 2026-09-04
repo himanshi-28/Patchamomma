@@ -80,6 +80,7 @@ interface Copy {
     sending: string;
     divider: string;
     googleAction: string;
+    googleHelp: string;
     demoTitle: string;
     demoDescription: string;
     demoAction: string;
@@ -106,8 +107,8 @@ const copy: Record<Locale, Copy> = {
     help: "Need help?",
     languageAction: "हिंदी में देखें",
     languageChanged: "Language changed to English. Your draft is unchanged.",
-    greeting: "Hi, Meera",
-    profileLabel: "Meera Sharma profile",
+    greeting: "Hi",
+    profileLabel: "profile",
     signOut: "Sign out",
     startHeading: "Your next chapter starts here",
     startBody: "Tell us what you have always wanted to learn. We will shape it around your time, pace, and comfort.",
@@ -141,11 +142,12 @@ const copy: Record<Locale, Copy> = {
       sending: "Please wait…",
       divider: "or",
       googleAction: "Continue with Google",
+      googleHelp: "If the Google window does not open, sign-in continues on a full Google page after 12 seconds. In Arc, allow pop-ups for this site.",
       demoTitle: "Try the demo",
       demoDescription: "Synthetic data · no cloud account",
       demoAction: "Continue as Meera",
       statuses: {
-        emailSent: "Check your email for a secure SakhiCircle sign-in link.",
+        emailSent: "Firebase accepted the request for {email}. Check Spam or Promotions and allow up to 5 minutes. If it still does not arrive, verify the address or use Google sign-in.",
         emailUnavailable: "Email sign-in needs Firebase project settings. Demo access still works locally.",
         googleUnavailable: "Google sign-in needs Firebase project settings. Demo access still works locally.",
         configurationUnavailable: "Firebase sign-in is unavailable because required project settings are missing.",
@@ -163,8 +165,8 @@ const copy: Record<Locale, Copy> = {
     help: "मदद चाहिए?",
     languageAction: "View in English",
     languageChanged: "भाषा हिंदी हुई। आपका ड्राफ़्ट नहीं बदला।",
-    greeting: "नमस्ते, मीरा",
-    profileLabel: "मीरा शर्मा प्रोफ़ाइल",
+    greeting: "नमस्ते",
+    profileLabel: "प्रोफ़ाइल",
     signOut: "साइन आउट करें",
     startHeading: "आपकी नई शुरुआत यहीं से है",
     startBody: "हमें बताइए कि आप हमेशा से क्या सीखना चाहती थीं। हम आपकी सुविधा, समय और गति के अनुसार योजना बनाएँगे।",
@@ -198,11 +200,12 @@ const copy: Record<Locale, Copy> = {
       sending: "कृपया प्रतीक्षा करें…",
       divider: "या",
       googleAction: "Google से जारी रखें",
+      googleHelp: "अगर Arc पॉप-अप रोकता है, तो 12 सेकंड बाद साइन-इन पूरे Google पेज पर जारी रहेगा। आप इस साइट के लिए पॉप-अप की अनुमति भी दे सकती हैं।",
       demoTitle: "डेमो आज़माएँ",
       demoDescription: "काल्पनिक डेटा · क्लाउड खाते की ज़रूरत नहीं",
       demoAction: "मीरा के रूप में जारी रखें",
       statuses: {
-        emailSent: "सुरक्षित SakhiCircle साइन-इन लिंक के लिए अपना ईमेल देखें।",
+        emailSent: "Firebase ने {email} के लिए अनुरोध स्वीकार किया। Spam या Promotions देखें और 5 मिनट तक प्रतीक्षा करें। फिर भी न आए तो पता जाँचें या Google साइन-इन इस्तेमाल करें।",
         emailUnavailable: "ईमेल साइन-इन के लिए Firebase प्रोजेक्ट सेटिंग्स चाहिए। स्थानीय डेमो अभी भी काम करता है।",
         googleUnavailable: "Google साइन-इन के लिए Firebase प्रोजेक्ट सेटिंग्स चाहिए। स्थानीय डेमो अभी भी काम करता है।",
         configurationUnavailable: "ज़रूरी प्रोजेक्ट सेटिंग्स न होने के कारण Firebase साइन-इन उपलब्ध नहीं है।",
@@ -256,6 +259,11 @@ export function App({
   const localeFocusPending = useRef(false);
   const text = copy[locale];
   const authenticated = session !== null;
+  const displayName = session?.displayName.trim() || (locale === "hi" ? "सखी" : "SakhiCircle member");
+  const firstName = displayName.split(/\s+/)[0];
+  const statusMessage = status === "emailSent"
+    ? text.login.statuses.emailSent.replace("{email}", email)
+    : status ? text.login.statuses[status] : "";
 
   useEffect(() => gateway.observeSession(
     setSession,
@@ -469,6 +477,7 @@ export function App({
               <span className="google-mark" aria-hidden="true">G</span>
               {text.login.googleAction}
             </button>
+            <p className="sign-in-help">{text.login.googleHelp}</p>
 
             {demoMode && (
               <div className="demo-access">
@@ -480,7 +489,7 @@ export function App({
               </div>
             )}
 
-            {status && <p className="status-message" role="status">{text.login.statuses[status]}</p>}
+            {status && <p className="status-message" role="status">{statusMessage}</p>}
           </section>
         </main>
       </div>
@@ -502,13 +511,13 @@ export function App({
             <button
               className="profile-button"
               type="button"
-              aria-label={text.profileLabel}
+              aria-label={`${displayName} ${text.profileLabel}`}
               aria-expanded={profileOpen}
               aria-controls="profile-menu"
               onClick={() => setProfileOpen((open) => !open)}
             >
-              <span className="avatar" aria-hidden="true">M</span>
-              <span className="profile-name">{session.displayName.split(" ")[0]}</span>
+              <span className="avatar" aria-hidden="true">{firstName.charAt(0).toLocaleUpperCase(locale === "hi" ? "hi-IN" : "en-IN")}</span>
+              <span className="profile-name">{firstName}</span>
             </button>
             {profileOpen && (
               <div id="profile-menu" className="profile-menu">
@@ -546,7 +555,7 @@ export function App({
 
         <main id="main-content" className="app-main" tabIndex={-1}>
           <div className="main-toolbar">
-            <p>{text.greeting}</p>
+            <p>{text.greeting}, {firstName}</p>
             <button className="help-button" type="button" onClick={() => setHelpOpen((open) => !open)} aria-expanded={helpOpen} aria-controls={helpId}>
               <CircleHelp aria-hidden="true" />
               {text.help}

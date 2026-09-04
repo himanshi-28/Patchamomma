@@ -1,0 +1,89 @@
+{
+  "schemaVersion": "analytics-infrastructure-v1.0.0",
+  "location": "asia-south1",
+  "billingModel": "on_demand",
+  "maximumBytesBilled": 20971520,
+  "datasetTimeTravelHours": 48,
+  "exports": [],
+  "scheduledQueries": [],
+  "materializedViews": [],
+  "privateTable": {
+    "resource": "sakhi_analytics.checkpoint_events_v1",
+    "partitionField": "event_date",
+    "requirePartitionFilter": true,
+    "partitionExpirationDays": 90,
+    "clusteringFields": [
+      "event_name",
+      "subject_key"
+    ],
+    "schema": [
+      { "name": "event_date", "type": "DATE", "mode": "REQUIRED" },
+      { "name": "event_timestamp", "type": "TIMESTAMP", "mode": "REQUIRED" },
+      { "name": "schema_version", "type": "STRING", "mode": "REQUIRED" },
+      { "name": "event_name", "type": "STRING", "mode": "REQUIRED" },
+      { "name": "event_id", "type": "STRING", "mode": "REQUIRED" },
+      { "name": "event_key", "type": "STRING", "mode": "REQUIRED" },
+      { "name": "payload_hash", "type": "STRING", "mode": "REQUIRED" },
+      { "name": "subject_key", "type": "STRING", "mode": "REQUIRED" },
+      { "name": "subject_key_version", "type": "STRING", "mode": "REQUIRED" },
+      { "name": "environment", "type": "STRING", "mode": "REQUIRED" },
+      { "name": "journey_schema_version", "type": "STRING", "mode": "NULLABLE" },
+      { "name": "journey_generator", "type": "STRING", "mode": "NULLABLE" },
+      { "name": "journey_fallback_used", "type": "BOOL", "mode": "NULLABLE" },
+      { "name": "matching_contract_version", "type": "STRING", "mode": "NULLABLE" },
+      { "name": "recommendation_type", "type": "STRING", "mode": "NULLABLE" },
+      { "name": "recommendation_outcome", "type": "STRING", "mode": "NULLABLE" },
+      { "name": "result_count", "type": "INT64", "mode": "NULLABLE" }
+    ]
+  },
+  "reportingView": {
+    "resource": "sakhi_reporting.checkpoint_metrics_v1",
+    "source": "sakhi_analytics.checkpoint_events_v1",
+    "authorizedAgainst": "sakhi_analytics",
+    "columns": [
+      "event_date",
+      "confirmed_profiles",
+      "journey_drafts_created",
+      "journeys_confirmed",
+      "recommendations_matched",
+      "recommendations_no_matches",
+      "journey_drafts_per_confirmed_profile",
+      "journey_confirmations_per_draft",
+      "recommendations_per_confirmed_journey"
+    ]
+  },
+  "reportingAccess": {
+    "credentialMode": "owners_credentials",
+    "automaticRefresh": false,
+    "publicSharing": false,
+    "allowedResources": [
+      "sakhi_reporting.checkpoint_metrics_v1"
+    ],
+    "deniedResources": [
+      "sakhi_analytics",
+      "sakhi_analytics.checkpoint_events_v1",
+      "firestore"
+    ]
+  },
+  "checkpointQuery": {
+    "resource": "sakhi_reporting.checkpoint_metrics_v1",
+    "maximumBytesBilled": 20971520,
+    "dryRunBytes": 1048576,
+    "dryRunEvidence": "deterministic contract fixture; live BigQuery dry run requires separate approval",
+    "partitionWindowDays": 90
+  },
+  "deliveryQueue": {
+    "resource": "analytics-delivery",
+    "location": "asia-south1",
+    "maxDispatchesPerSecond": 2,
+    "maxConcurrentDispatches": 2,
+    "maxAttempts": 8,
+    "maxRetryDurationSeconds": 86400,
+    "minBackoffSeconds": 10,
+    "maxBackoffSeconds": 900,
+    "bodyFields": [
+      "deliveryHandle"
+    ],
+    "oidcRequired": true
+  }
+}

@@ -26,6 +26,7 @@ def test_demo_token_is_accepted_only_when_demo_mode_is_enabled() -> None:
                 adapter_mode="production",
                 firebase_project_id="sakhicircle-production",
                 firebase_app_id="web-app",
+                firestore_database_id="(default)",
             )
         )
     )
@@ -52,6 +53,7 @@ def test_production_requires_app_check_in_addition_to_a_valid_id_token() -> None
                 adapter_mode="production",
                 firebase_project_id="sakhicircle-production",
                 firebase_app_id="web-app",
+                firestore_database_id="(default)",
             )
         )
     )
@@ -83,6 +85,7 @@ def test_production_accepts_verified_id_and_app_check_tokens() -> None:
                 adapter_mode="production",
                 firebase_project_id="sakhicircle-production",
                 firebase_app_id="web-app",
+                firestore_database_id="(default)",
             )
         )
     )
@@ -118,6 +121,7 @@ def test_invalid_app_check_token_returns_403_without_token_detail() -> None:
                 adapter_mode="production",
                 firebase_project_id="sakhicircle-production",
                 firebase_app_id="web-app",
+                firestore_database_id="(default)",
             )
         )
     )

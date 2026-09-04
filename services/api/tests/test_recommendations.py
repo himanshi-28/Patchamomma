@@ -5,6 +5,12 @@ from fastapi.testclient import TestClient
 from app.auth import AuthenticatedUser
 from app.config import Settings
 from app.main import create_app
+from app.persistence import (
+    InMemoryJourneyRepository,
+    InMemoryProfileRepository,
+    OperationalDataUnavailable,
+)
+from app.profile import LearningWishProfile
 
 AUTH_HEADERS = {"Authorization": "Bearer demo-learner-token"}
 PROFILE = {
@@ -62,8 +68,8 @@ def test_recommendations_require_authentication_confirmed_profile_and_active_con
 def test_explicit_get_returns_one_minimal_explainable_synthetic_partner_without_writing() -> None:
     client, app = client_with_profile()
     stores_before = {
-        "profile": dict(app.state.profile_store),
-        "journey": dict(app.state.journey_store),
+        "profile": dict(app.state.profile_repository.profiles),
+        "journey": dict(app.state.journey_repository.journeys),
     }
 
     response = client.get(
@@ -87,8 +93,8 @@ def test_explicit_get_returns_one_minimal_explainable_synthetic_partner_without_
     assert result["synthetic"] is True
     assert result["score"] == sum(factor["points"] for factor in result["factorBreakdown"])
     assert len(result["reasons"]) == 3
-    assert app.state.profile_store == stores_before["profile"]
-    assert app.state.journey_store == stores_before["journey"]
+    assert app.state.profile_repository.profiles == stores_before["profile"]
+    assert app.state.journey_repository.journeys == stores_before["journey"]
     assert app.state.integration_call_counts == {"ai": 0, "paid": 0}
 
     forbidden = {
@@ -141,8 +147,13 @@ def test_unknown_hobby_no_match_and_unavailable_states_reveal_no_candidate_detai
     assert unknown.json()["results"] == []
 
     client, app = client_with_profile()
-    all_inactive = [learner.model_copy(update={"active": False}) for learner in app.state.matching_dataset.learners]
-    app.state.matching_dataset = app.state.matching_dataset.model_copy(update={"learners": all_inactive})
+    dataset = app.state.recommendation_repository.dataset
+    all_inactive = [
+        learner.model_copy(update={"active": False}) for learner in dataset.learners
+    ]
+    app.state.recommendation_repository.dataset = dataset.model_copy(
+        update={"learners": all_inactive},
+    )
     no_match = client.get(
         "/api/v1/recommendations?type=partner",
         headers=AUTH_HEADERS,
@@ -152,7 +163,7 @@ def test_unknown_hobby_no_match_and_unavailable_states_reveal_no_candidate_detai
     assert "filtered" not in no_match.text.lower()
     assert "block" not in no_match.text.lower()
 
-    app.state.matching_dataset = None
+    app.state.recommendation_repository.dataset = None
     unavailable = client.get(
         "/api/v1/recommendations?type=partner",
         headers=AUTH_HEADERS,
@@ -162,15 +173,28 @@ def test_unknown_hobby_no_match_and_unavailable_states_reveal_no_candidate_detai
 
 
 def test_production_recommendations_fail_closed_without_using_the_synthetic_adapter() -> None:
+    class UnavailableRecommendationRepository:
+        def get_dataset(self):
+            raise OperationalDataUnavailable("operational data unavailable")
+
+    profile_repository = InMemoryProfileRepository()
+    profile_repository.save_profile(
+        "firebase-user",
+        LearningWishProfile.model_validate(PROFILE),
+    )
+    recommendation_repository = UnavailableRecommendationRepository()
     app = create_app(
         Settings(
             app_env="production",
             adapter_mode="production",
             firebase_project_id="sakhicircle-production",
             firebase_app_id="web-app",
+            firestore_database_id="(default)",
         ),
+        profile_repository=profile_repository,
+        journey_repository=InMemoryJourneyRepository(),
+        recommendation_repository=recommendation_repository,
     )
-    app.state.profile_store["firebase-user"] = app.state.profile_model.model_validate(PROFILE)
     client = TestClient(app)
     headers = {
         "Authorization": "Bearer valid-id-token",
@@ -192,4 +216,4 @@ def test_production_recommendations_fail_closed_without_using_the_synthetic_adap
 
     assert response.status_code == 503
     assert response.json()["detail"]["code"] == "recommendations_configuration_required"
-    assert app.state.matching_dataset is None
+    assert app.state.recommendation_repository is recommendation_repository

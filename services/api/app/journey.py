@@ -338,8 +338,16 @@ def _build_journey(
                 "hi": "आपके सीखने के लक्ष्य के लिए चार सहज सप्ताह",
             },
             "summary": {
-                "en": f"A reviewed plan for {profile.hobby}. Your goal: {profile.goal}.",
-                "hi": f"{profile.hobby} के लिए जाँची हुई योजना। आपका लक्ष्य: {profile.goal}।",
+                "en": (
+                    f"A reviewed plan for {profile.hobby}. Your goal: {profile.goal}."
+                    if profile.goal
+                    else f"A reviewed plan for {profile.hobby}."
+                ),
+                "hi": (
+                    f"{profile.hobby} के लिए जाँची हुई योजना। आपका लक्ष्य: {profile.goal}।"
+                    if profile.goal
+                    else f"{profile.hobby} के लिए जाँची हुई योजना।"
+                ),
             },
             "provenance": {
                 "generator": generator,

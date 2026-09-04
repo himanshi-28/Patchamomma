@@ -35,6 +35,17 @@ def setup_matching():
     return dataset, learner
 
 
+def test_optional_experience_and_goal_use_safe_neutral_matching_values() -> None:
+    dataset = generate_synthetic_dataset()
+    profile = LearningWishProfile.model_validate({**PROFILE, "experience": "", "goal": ""})
+
+    learner = canonicalize_profile(profile, dataset.hobbies)
+
+    assert learner is not None
+    assert learner.experience_level == 0
+    assert learner.goal_tag is None
+
+
 @pytest.mark.parametrize(
     ("change", "requester_id"),
     [
@@ -217,4 +228,3 @@ def test_reviewed_english_and_hindi_copy_cannot_change_ids_scores_or_order() -> 
         for result in localized_hi["results"]
     ]
     assert localized_en["results"][0]["visibleReasons"] != localized_hi["results"][0]["visibleReasons"]
-

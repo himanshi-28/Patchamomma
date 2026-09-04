@@ -1,5 +1,9 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import {
+  createAnalyticsAwareFetcher,
+  createAnalyticsReceiptGateway,
+} from "./analytics/runtime";
 import { App } from "./App";
 import { createFirebaseAuthGateway } from "./auth/firebase";
 import {
@@ -9,6 +13,7 @@ import {
   resolveAuthRuntimeConfig,
   type AuthGateway,
 } from "./auth/runtime";
+import { resolveApiBaseUrl } from "./deployment/runtime";
 import { createJourneyApiGateway } from "./journey/runtime";
 import { createProfileApiGateway, createTranscriptAdapterForMode } from "./onboarding/runtime";
 import { createRecommendationApiGateway } from "./recommendation/runtime";
@@ -37,19 +42,29 @@ try {
   );
 }
 
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:8080`;
+const apiBaseUrl = resolveApiBaseUrl(import.meta.env, window.location);
 const transcriptAdapter = createTranscriptAdapterForMode(adapterMode);
+const analyticsReceiptGateway = createAnalyticsReceiptGateway({
+  apiBaseUrl,
+  requestHeaders: () => protectedRequestHeaders(authGateway, adapterMode),
+});
+const analyticsAwareFetch = createAnalyticsAwareFetcher({
+  resume: (receipt) => analyticsReceiptGateway.resume(receipt),
+});
 const profileGateway = createProfileApiGateway({
   apiBaseUrl,
   requestHeaders: () => protectedRequestHeaders(authGateway, adapterMode),
+  fetcher: analyticsAwareFetch,
 });
 const journeyGateway = createJourneyApiGateway({
   apiBaseUrl,
   requestHeaders: () => protectedRequestHeaders(authGateway, adapterMode),
+  fetcher: analyticsAwareFetch,
 });
 const recommendationGateway = createRecommendationApiGateway({
   apiBaseUrl,
   requestHeaders: () => protectedRequestHeaders(authGateway, adapterMode),
+  fetcher: analyticsAwareFetch,
 });
 
 createRoot(root).render(

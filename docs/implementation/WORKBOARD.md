@@ -72,11 +72,11 @@ This file is the cross-chat source of truth. Each task targets one independently
 |---|---|---|---|---|
 | SC-600 | Connect one bounded Gemini/ADK journey workflow behind deterministic fallback | SC-590 | Versioned output passes English/Hindi safety evaluation | `DONE` — approved 2026-08-27 |
 | SC-700 | Approve pseudonymous analytics schema and cloud-cost controls for G7 | SC-600 | Allowed properties, retention, budgets and quotas approved | `DONE` — approved 2026-08-28 |
-| SC-705 | Provision the Google Cloud/Firebase project and approved cost guardrails | G7 | Auth, App Check, private/reporting datasets, Cloud Tasks, Mumbai IAM and USD 10/25/40 alerts verified | `READY` |
-| SC-706 | Implement persistent application quotas and operator cost switches | SC-705 | India-day counters, Gemini zero-allowance, maintenance and fail-closed tests pass | `PENDING` |
-| SC-710 | Implement server-authoritative idempotent BigQuery event and one Looker Studio proof | SC-706 | Signed-receipt, durable-task, duplicate, forged-outcome and reporting-isolation integration tests pass | `PENDING` |
-| SC-715 | Implement persistent Firestore profile, journey and recommendation adapters | SC-710 | Emulator integration tests pass; production never uses process-memory state or demo credentials | `PENDING` |
-| SC-720 | Deploy PWA to Firebase Hosting and FastAPI to Cloud Run | SC-715 | Preview/live URLs, `/health`, 0–2 runtime controls, maintenance, secret scan and local fallback pass | `PENDING` |
+| SC-705 | Provision the Google Cloud/Firebase project and approved cost guardrails | G7 | Auth, App Check, private/reporting datasets, Cloud Tasks, Mumbai IAM and approved billing-currency alerts verified | `DONE` — approved 2026-09-02; no product traffic deployed |
+| SC-706 | Implement persistent application quotas and operator cost switches | SC-705 | India-day counters, Gemini zero-allowance, maintenance and fail-closed tests pass | `DONE` — approved 2026-09-02 |
+| SC-710 | Implement server-authoritative idempotent BigQuery event and one Looker Studio proof | SC-706 | Signed-receipt, durable-task, duplicate, forged-outcome and reporting-isolation integration tests pass | `DONE` — configured phases 1–8 and approved Looker proof complete 2026-09-03 |
+| SC-715 | Implement persistent Firestore profile, journey and recommendation adapters | SC-710 | Emulator integration tests pass; production never uses process-memory state or demo credentials | `DONE` — approved 2026-09-03 |
+| SC-720 | Deploy PWA to Firebase Hosting and FastAPI to Cloud Run | SC-715 | Preview/live URLs, `/health`, 0–2 runtime controls, maintenance, secret scan and local fallback pass | `AWAITING APPROVAL` — reported production issues are corrected live; final end-to-end evidence requires approval |
 | SC-725 | Capture and approve the deployed English/Hindi vertical-slice evidence | SC-720 | Real browser flow, Cloud Run API evidence and mobile/desktop screenshots recorded | `PENDING` |
 | SC-730 | Complete accessibility/usability QA and backup demonstration video | SC-725 | Keyboard, screen reader, 200% zoom and judged flow pass | `PENDING` |
 | SC-750 | Lock September 7 submission | SC-730 | Tagged release, README, architecture diagram and demo script approved | `PENDING` |
@@ -87,4 +87,4 @@ Production payments, full circle posting/chat, mentor marketplace operations, na
 
 ## Current next task
 
-`SC-705` is ready. Start it only when the user explicitly requests `SC-705`; show the proposed project ID, billing account, owners, and resource-creating commands before provisioning.
+`SC-720` final live evidence is ready for approval. Firebase Hosting serves the exact corrected artifact for dynamic authenticated names, optional experience/first goal, painting-wish extraction, actionable voice fallback, Arc-safe Google sign-in fallback, and accurate email-link delivery guidance. Cloud Run revision `sakhicircle-api-00003-qdv` is Ready on immutable digest `sha256:cbfecb3d901ba8f2c26dc085539c85ba2071500c90dba0cab2867fdb20a57c98` with min 0/max 2, paid calls false, and only service-scoped public invoker IAM. Maintenance is off, `/ready` is 200, profile writes reach authentication, approved live-origin CORS succeeds, Gemini allowance remains zero, and the synthetic catalog is unchanged. Approve the final reported-issues evidence to mark SC-720 `DONE` and make SC-725 ready; keep the Mumbai queue and Looker Studio report paused.

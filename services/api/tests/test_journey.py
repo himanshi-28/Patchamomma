@@ -4,7 +4,8 @@ from datetime import date, timedelta
 from fastapi.testclient import TestClient
 
 from app.config import Settings
-from app.journey import JourneyDocument, build_curated_fallback
+from app.journey import JourneyDocument, build_curated_fallback, build_deterministic_journey
+from app.profile import LearningWishProfile
 from app.main import create_app
 
 AUTH_HEADERS = {"Authorization": "Bearer demo-learner-token"}
@@ -65,6 +66,19 @@ def test_generation_requires_an_already_confirmed_profile() -> None:
     assert response.json()["detail"]["code"] == "confirmed_profile_required"
 
 
+def test_optional_first_goal_does_not_create_a_dangling_summary_label() -> None:
+    profile = LearningWishProfile.model_validate({**PROFILE, "experience": "", "goal": ""})
+
+    journey = build_deterministic_journey(
+        profile=profile,
+        starts_on=date.fromisoformat(STARTS_ON),
+        uid="optional-profile",
+    )
+
+    assert journey.summary.en == "A reviewed plan for Watercolour painting."
+    assert journey.summary.hi == "Watercolour painting के लिए जाँची हुई योजना।"
+
+
 def test_deterministic_draft_has_exact_bilingual_28_day_structure_and_no_write() -> None:
     client, app = client_with_profile()
 
@@ -116,7 +130,7 @@ def test_deterministic_draft_has_exact_bilingual_28_day_structure_and_no_write()
         assert set(activity["instructions"]) == {"en", "hi"}
         assert all(activity["instructions"].values())
 
-    assert app.state.journey_store == {}
+    assert app.state.journey_repository.journeys == {}
     assert "uid" not in draft
     assert "city" not in draft
     assert "transcript" not in draft
@@ -153,7 +167,7 @@ def test_strict_schema_rejects_unknown_forbidden_and_over_budget_edits() -> None
 def test_only_explicit_confirmation_persists_the_edited_journey() -> None:
     client, app = client_with_profile()
     draft = generate(client)
-    assert app.state.journey_store == {}
+    assert app.state.journey_repository.journeys == {}
 
     draft["title"]["en"] = "My edited watercolour month"
     draft["weeks"][0]["activities"][0]["durationMinutes"] = 20
@@ -168,12 +182,12 @@ def test_only_explicit_confirmation_persists_the_edited_journey() -> None:
     assert confirmed["status"] == "confirmed"
     assert confirmed["title"]["en"] == "My edited watercolour month"
     assert confirmed["weeks"][0]["activities"][0]["durationMinutes"] == 20
-    assert app.state.journey_store["demo-meera"].status == "confirmed"
+    assert app.state.journey_repository.get_confirmed_journey("demo-meera").status == "confirmed"
 
 
 def test_curated_fallback_uses_the_same_strict_validated_contract() -> None:
     _client, app = client_with_profile()
-    profile = app.state.profile_store["demo-meera"]
+    profile = app.state.profile_repository.get_profile("demo-meera")
 
     fallback = build_curated_fallback(
         profile=profile,

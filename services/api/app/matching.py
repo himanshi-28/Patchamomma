@@ -192,7 +192,7 @@ def canonicalize_profile(
     return CanonicalLearner(
         hobby_id=hobby_id,
         goal_tag=GOAL_ALIASES.get(_normalized(profile.goal)),
-        experience_level=EXPERIENCE_LEVELS[profile.experience],
+        experience_level=EXPERIENCE_LEVELS.get(profile.experience, 0),
         availability_tier=tier,
         languages=LANGUAGES[profile.language],
         pace=tier,

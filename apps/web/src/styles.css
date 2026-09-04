@@ -539,6 +539,13 @@ p {
   font-weight: 900;
 }
 
+.sign-in-help {
+  margin: 8px 2px 0;
+  color: var(--color-muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
 .demo-access {
   display: flex;
   align-items: center;

@@ -17,6 +17,7 @@ __pycache__/
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
+.firebase/
 *.local
 *.keystore
 *.tsbuildinfo

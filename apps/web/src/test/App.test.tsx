@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, vi } from "vitest";
 import { App } from "../App";
 import { createDeterministicAuthGateway } from "../auth/runtime";
+import type { AuthGateway } from "../auth/runtime";
 import { cacheConfirmedJourney } from "../journey/cache";
 import type { JourneyDraft } from "../journey/runtime";
 import styles from "../styles.css?raw";
@@ -76,6 +77,7 @@ describe("SakhiCircle app shell", () => {
     expect(screen.getByLabelText("Email address")).toBeVisible();
     expect(screen.getByRole("button", { name: "Send sign-in link" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Continue with Google" })).toBeVisible();
+    expect(screen.getByText(/Arc, allow pop-ups/)).toBeVisible();
     expect(screen.queryByRole("button", { name: "Continue as Meera" })).not.toBeInTheDocument();
 
     await user.click(guide);
@@ -91,6 +93,32 @@ describe("SakhiCircle app shell", () => {
   it("shows synthetic access only in demo mode", () => {
     render(<App demoMode />);
     expect(screen.getByRole("button", { name: "Continue as Meera" })).toBeVisible();
+  });
+
+  it("reports email-link acceptance without claiming inbox delivery", async () => {
+    const user = userEvent.setup();
+    const authGateway: AuthGateway = {
+      observeSession(listener) {
+        listener(null);
+        return () => undefined;
+      },
+      sendEmailLink: vi.fn().mockResolvedValue(undefined),
+      signInWithGoogle: vi.fn(),
+      signInDemo: vi.fn(),
+      signOut: vi.fn(),
+      getIdToken: vi.fn(),
+      getAppCheckToken: vi.fn(),
+    };
+    render(<App authGateway={authGateway} />);
+
+    await user.type(screen.getByLabelText("Email address"), "rangnanihimanshi@gmail.com");
+    await user.click(screen.getByRole("button", { name: "Send sign-in link" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Firebase accepted the request for rangnanihimanshi@gmail.com",
+    );
+    expect(screen.getByRole("status")).toHaveTextContent("Spam or Promotions");
+    expect(screen.getByRole("status")).toHaveTextContent("5 minutes");
   });
 
   it("signs out of the deterministic session and returns to sign-in", async () => {
@@ -141,6 +169,27 @@ describe("SakhiCircle app shell", () => {
     expect(screen.getByRole("button", { name: "Need help?" })).toBeVisible();
     expect(screen.getByText("Hi, Meera")).toBeVisible();
     expect(screen.queryByText("Namaste, Meera")).not.toBeInTheDocument();
+  });
+
+  it("uses the signed-in account name throughout the authenticated shell", () => {
+    const authGateway: AuthGateway = {
+      observeSession(listener) {
+        listener({ uid: "himanshi", displayName: "Himanshi Rangnani", synthetic: false });
+        return () => undefined;
+      },
+      sendEmailLink: vi.fn(),
+      signInWithGoogle: vi.fn(),
+      signInDemo: vi.fn(),
+      signOut: vi.fn(),
+      getIdToken: vi.fn().mockResolvedValue("token"),
+      getAppCheckToken: vi.fn().mockResolvedValue("app-check"),
+    };
+
+    render(<App authGateway={authGateway} />);
+
+    expect(screen.getByText("Hi, Himanshi")).toBeVisible();
+    expect(screen.queryByText("Hi, Meera")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Himanshi Rangnani profile" })).toBeVisible();
   });
 
   it("uses reviewed Hindi labels for the same three destinations", async () => {

@@ -34,7 +34,10 @@ def test_confirmed_profile_saves_only_reviewed_structured_fields() -> None:
 
     assert response.status_code == 200
     assert response.json() == {"status": "saved", "profile": PROFILE}
-    assert app.state.profile_store["demo-meera"].model_dump(by_alias=True) == PROFILE
+    assert (
+        app.state.profile_repository.get_profile("demo-meera").model_dump(by_alias=True)
+        == PROFILE
+    )
 
 
 def test_profile_boundary_rejects_transcript_raw_audio_and_missing_consent() -> None:
@@ -59,3 +62,15 @@ def test_profile_boundary_rejects_transcript_raw_audio_and_missing_consent() -> 
     assert with_transcript.status_code == 422
     assert with_audio.status_code == 422
     assert without_consent.status_code == 422
+
+
+def test_profile_accepts_omitted_experience_and_first_goal() -> None:
+    app = create_app(Settings(app_env="test", demo_mode=True))
+    client = TestClient(app)
+    optional_profile = {**PROFILE, "experience": "", "goal": ""}
+
+    response = client.put("/api/v1/profile", headers=AUTH_HEADERS, json=optional_profile)
+
+    assert response.status_code == 200
+    assert response.json()["profile"]["experience"] == ""
+    assert response.json()["profile"]["goal"] == ""

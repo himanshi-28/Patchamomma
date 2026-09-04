@@ -131,7 +131,7 @@ def test_gemini_workflow_first_pass_returns_strict_bilingual_allowlisted_draft()
     assert all(activity["accessibleAlternative"]["hi"] for activity in activities)
     assert all(activity["safetyNote"]["en"] for activity in activities)
     assert all(activity["safetyNote"]["hi"] for activity in activities)
-    assert app.state.journey_store == {}
+    assert app.state.journey_repository.journeys == {}
     assert app.state.integration_call_counts == {"ai": 1, "paid": 0}
 
     sent = workflow.requests[0].model_dump(by_alias=True, mode="json")
@@ -188,7 +188,7 @@ def test_reviewer_rejection_twice_returns_complete_reviewed_fallback() -> None:
         "fallbackReason": "review_failed_twice",
     }
     assert workflow.requests[1].rejection_codes == ["safety"]
-    assert app.state.journey_store == {}
+    assert app.state.journey_repository.journeys == {}
 
 
 def test_localization_rejection_twice_uses_specific_fallback_reason() -> None:
@@ -253,7 +253,7 @@ def test_missing_gemini_configuration_fails_closed_instead_of_using_fallback() -
     assert response.json()["detail"]["code"] == "journey_configuration_required"
     assert "key" not in response.text.lower()
     assert app.state.integration_call_counts == {"ai": 0, "paid": 0}
-    assert app.state.journey_store == {}
+    assert app.state.journey_repository.journeys == {}
 
 
 def test_server_rejects_workflow_output_that_changes_trusted_identity_or_start_date() -> None:

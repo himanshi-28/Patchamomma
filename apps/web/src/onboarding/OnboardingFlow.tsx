@@ -5,6 +5,8 @@ import {
   type LearningWish,
   type Locale,
   type ProfileGateway,
+  ProfileSaveError,
+  type ProfileSaveFailure,
   TranscriptCaptureError,
   type TranscriptCaptureFailure,
   type TranscriptAdapter,
@@ -21,7 +23,7 @@ type Stage = "capture" | "review" | "success";
 type FieldKey = keyof Pick<LearningWish, "hobby" | "experience" | "goal" | "availability" | "language" | "accessibility" | "format" | "city">;
 type GroupKey = "learning" | "comfort" | "permission";
 
-const requiredFields: FieldKey[] = ["hobby", "experience", "goal", "availability", "language", "accessibility", "format"];
+const requiredFields: FieldKey[] = ["hobby", "availability", "language", "accessibility", "format"];
 
 const fieldGroups: Record<GroupKey, FieldKey[]> = {
   learning: ["hobby", "experience", "goal"],
@@ -52,7 +54,7 @@ const options: Partial<Record<FieldKey, Record<Locale, string[]>>> = {
 const copy = {
   en: {
     captureTitle: "Share your learning wish",
-    captureIntro: "Speak or type in your own words. Include what you want to learn, your first goal, and time that feels realistic.",
+    captureIntro: "Speak or type what you want to learn. Your experience and first goal are optional; we still need your time, comfort, and preferences.",
     wishLabel: "Your learning wish",
     typeStatus: "Typing works just as well.",
     startSpeaking: "Start speaking",
@@ -63,7 +65,7 @@ const copy = {
       permission_denied: "Microphone access was not allowed. Continue by typing above.",
       unsupported: "Voice input is not supported in this browser. Continue by typing above.",
       no_speech: "We did not hear any words. Try speaking again or continue by typing above.",
-      unavailable: "Voice input is unavailable right now. Continue by typing above or try again.",
+      unavailable: "Your browser's speech service could not start. Open this site in Chrome, allow microphone access, or continue by typing above.",
     },
     reviewTitle: "Review before saving",
     nothingSaved: "Nothing has been saved",
@@ -75,8 +77,8 @@ const copy = {
     groups: { learning: "Learning", comfort: "Time & comfort", permission: "Preferences & permission" },
     labels: {
       hobby: "What would you like to learn?",
-      experience: "Your experience",
-      goal: "Your first goal",
+      experience: "Your experience (optional)",
+      goal: "Your first goal (optional)",
       availability: "Time you can give",
       language: "Plan language",
       accessibility: "What would make learning easier?",
@@ -86,6 +88,7 @@ const copy = {
     edit: "Edit",
     saveDetail: "Save detail",
     missing: "Please add this",
+    missingOptional: "Not provided (optional)",
     changed: "Updated from your words",
     planConsent: "I agree SakhiCircle may use these reviewed details to create my private 4-week plan.",
     matchingConsent: "Also use hobby, language, schedule, format and city to suggest compatible people. You can change this later.",
@@ -95,6 +98,12 @@ const copy = {
     saving: "Saving reviewed details…",
     storage: "After confirmation, only reviewed structured details are saved. The transcript is discarded; raw audio is never stored.",
     saveError: "Your details were not saved. Check your connection and retry; your reviewed draft is still here.",
+    saveErrors: {
+      maintenance: "SakhiCircle is temporarily paused for maintenance. Your reviewed draft is safe here; try again after the service reopens.",
+      unauthorized: "Your sign-in has expired. Sign in again; your reviewed draft is still here on this device.",
+      security: "This request could not be verified. Refresh the page and retry; your reviewed draft is still here.",
+      unavailable: "Your details were not saved. Check your connection and retry; your reviewed draft is still here.",
+    },
     retry: "Retry saving",
     successTitle: "Your plan is ready to build",
     successBody: "The reviewed details were accepted. The transcript was discarded.",
@@ -102,7 +111,7 @@ const copy = {
   },
   hi: {
     captureTitle: "अपनी सीखने की इच्छा बताएँ",
-    captureIntro: "अपने शब्दों में बोलें या लिखें। क्या सीखना है, पहला लक्ष्य और जितना समय देना आसान लगे—यह सब बताएँ।",
+    captureIntro: "जो सीखना चाहती हैं, बोलें या लिखें। आपका अनुभव और पहला लक्ष्य वैकल्पिक हैं; समय, सुविधा और पसंद बताना ज़रूरी है।",
     wishLabel: "आपकी सीखने की इच्छा",
     typeStatus: "लिखकर बताना भी उतना ही आसान है।",
     startSpeaking: "बोलना शुरू करें",
@@ -113,7 +122,7 @@ const copy = {
       permission_denied: "माइक्रोफ़ोन की अनुमति नहीं मिली। ऊपर लिखकर जारी रखें।",
       unsupported: "यह ब्राउज़र वॉइस इनपुट का समर्थन नहीं करता। ऊपर लिखकर जारी रखें।",
       no_speech: "कोई शब्द सुनाई नहीं दिए। फिर बोलें या ऊपर लिखकर जारी रखें।",
-      unavailable: "वॉइस इनपुट अभी उपलब्ध नहीं है। ऊपर लिखकर जारी रखें या फिर कोशिश करें।",
+      unavailable: "आपके ब्राउज़र की वॉइस सेवा शुरू नहीं हुई। साइट को Chrome में खोलें, माइक्रोफ़ोन की अनुमति दें, या ऊपर लिखकर जारी रखें।",
     },
     reviewTitle: "सेव करने से पहले जाँचें",
     nothingSaved: "अभी कुछ भी सेव नहीं हुआ है",
@@ -125,8 +134,8 @@ const copy = {
     groups: { learning: "सीखना", comfort: "समय और सुविधा", permission: "पसंद और अनुमति" },
     labels: {
       hobby: "आप क्या सीखना चाहती हैं?",
-      experience: "आपका अनुभव",
-      goal: "आपका पहला लक्ष्य",
+      experience: "आपका अनुभव (वैकल्पिक)",
+      goal: "आपका पहला लक्ष्य (वैकल्पिक)",
       availability: "आप कितना समय दे सकती हैं?",
       language: "योजना की भाषा",
       accessibility: "सीखना आसान बनाने के लिए क्या चाहिए?",
@@ -136,6 +145,7 @@ const copy = {
     edit: "बदलें",
     saveDetail: "विवरण सेव करें",
     missing: "यह विवरण जोड़ें",
+    missingOptional: "नहीं बताया (वैकल्पिक)",
     changed: "आपके शब्दों से बदला गया",
     planConsent: "मैं सहमत हूँ कि SakhiCircle इन जाँचे हुए विवरणों से मेरी निजी 4-सप्ताह की योजना बनाए।",
     matchingConsent: "शौक, भाषा, समय, सीखने का तरीका और शहर इस्तेमाल करके उपयुक्त लोगों के सुझाव भी दें। इसे बाद में बदल सकती हैं।",
@@ -145,6 +155,12 @@ const copy = {
     saving: "जाँचे हुए विवरण सेव हो रहे हैं…",
     storage: "पुष्टि के बाद केवल जाँचे हुए विवरण सेव होंगे। ट्रांसक्रिप्ट हटा दी जाएगी और कच्ची ऑडियो कभी सेव नहीं होगी।",
     saveError: "आपके विवरण सेव नहीं हुए। कनेक्शन जाँचकर फिर कोशिश करें; आपका जाँचा हुआ ड्राफ़्ट यहीं है।",
+    saveErrors: {
+      maintenance: "SakhiCircle रखरखाव के लिए अस्थायी रूप से रुका है। आपका जाँचा हुआ ड्राफ़्ट यहीं सुरक्षित है; सेवा खुलने पर फिर कोशिश करें।",
+      unauthorized: "आपका साइन-इन समाप्त हो गया है। फिर साइन इन करें; आपका जाँचा हुआ ड्राफ़्ट इस डिवाइस पर है।",
+      security: "इस अनुरोध की पुष्टि नहीं हो सकी। पेज रीफ़्रेश करके फिर कोशिश करें; आपका जाँचा हुआ ड्राफ़्ट यहीं है।",
+      unavailable: "आपके विवरण सेव नहीं हुए। कनेक्शन जाँचकर फिर कोशिश करें; आपका जाँचा हुआ ड्राफ़्ट यहीं है।",
+    },
     retry: "फिर सेव करें",
     successTitle: "आपकी योजना बनने के लिए तैयार है",
     successBody: "जाँचे हुए विवरण स्वीकार हुए। ट्रांसक्रिप्ट हटा दी गई।",
@@ -164,7 +180,7 @@ export function OnboardingFlow({ locale, transcriptAdapter, profileGateway, onCo
   const [activeGroup, setActiveGroup] = useState<GroupKey>("learning");
   const [changedFields, setChangedFields] = useState<Set<FieldKey>>(new Set());
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState(false);
+  const [saveError, setSaveError] = useState<ProfileSaveFailure | null>(null);
   const reviewHeading = useRef<HTMLHeadingElement>(null);
   const successHeading = useRef<HTMLHeadingElement>(null);
   const voiceErrorRef = useRef<HTMLParagraphElement>(null);
@@ -224,13 +240,13 @@ export function OnboardingFlow({ locale, transcriptAdapter, profileGateway, onCo
 
   const saveProfile = async () => {
     setSaving(true);
-    setSaveError(false);
+    setSaveError(null);
     try {
       await profileGateway.save(wish);
       setTranscript("");
       setStage("success");
-    } catch {
-      setSaveError(true);
+    } catch (error) {
+      setSaveError(error instanceof ProfileSaveError ? error.reason : "unavailable");
     } finally {
       setSaving(false);
     }
@@ -357,7 +373,7 @@ export function OnboardingFlow({ locale, transcriptAdapter, profileGateway, onCo
                         <span className="field-label">{text.labels[key]}{requiredFields.includes(key) && <span aria-hidden="true"> *</span>}</span>
                         {wish[key]
                           ? <strong>{wish[key]}</strong>
-                          : <span className="missing-detail" role="status">{text.missing}</span>}
+                          : <span className="missing-detail" role="status">{requiredFields.includes(key) ? text.missing : text.missingOptional}</span>}
                         {changedFields.has(key) && <small>{text.changed}</small>}
                       </div>
                       {editing === key ? (
@@ -365,7 +381,7 @@ export function OnboardingFlow({ locale, transcriptAdapter, profileGateway, onCo
                           <label htmlFor={`edit-${key}`}>{text.labels[key]}</label>
                           {options[key] ? (
                             <select id={`edit-${key}`} value={pendingEdit} onChange={(event) => setPendingEdit(event.target.value)}>
-                              <option value="">{text.missing}</option>
+                              <option value="">{requiredFields.includes(key) ? text.missing : text.missingOptional}</option>
                               {selectOptions.map((value) => <option key={value} value={value}>{value}</option>)}
                             </select>
                           ) : (
@@ -407,7 +423,7 @@ export function OnboardingFlow({ locale, transcriptAdapter, profileGateway, onCo
         </div>
       </div>
 
-      {saveError && <p className="save-error" role="alert">{text.saveError}</p>}
+      {saveError && <p className="save-error" role="alert">{text.saveErrors[saveError]}</p>}
       <div className="review-actions">
         <button className="text-button" type="button" onClick={() => setStage("capture")}>{text.back}</button>
         {saveError ? (

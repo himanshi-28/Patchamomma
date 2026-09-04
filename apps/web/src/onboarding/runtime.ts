@@ -73,6 +73,15 @@ export interface ProfileGateway {
   save(profile: LearningWish): Promise<void>;
 }
 
+export type ProfileSaveFailure = "maintenance" | "unauthorized" | "security" | "unavailable";
+
+export class ProfileSaveError extends Error {
+  constructor(readonly reason: ProfileSaveFailure) {
+    super(`Profile save failed: ${reason}`);
+    this.name = "ProfileSaveError";
+  }
+}
+
 const deterministicSamples: Record<Locale, string> = {
   en: "I painted a little when I was younger. I want to restart watercolours and make a greeting card for my granddaughter. I can practise for 30 minutes, four days a week. I prefer Hindi instructions, larger text, seated alternatives, and learning at home with a small online group. I live in Pune.",
   hi: "मैंने युवावस्था में थोड़ी पेंटिंग की थी। अब मैं वॉटरकलर फिर शुरू करके अपनी नातिन के लिए शुभकामना कार्ड बनाना चाहती हूँ। मैं सप्ताह में चार दिन, 30 मिनट अभ्यास कर सकती हूँ। मुझे हिंदी में निर्देश, बड़ा टेक्स्ट, बैठकर करने के विकल्प और घर से छोटे ऑनलाइन समूह में सीखना पसंद है। मैं पुणे में रहती हूँ।",
@@ -163,7 +172,8 @@ export function createTranscriptAdapterForMode(
 export function extractLearningWish(transcript: string, locale: Locale): LearningWish {
   const normalized = transcript.toLocaleLowerCase(locale === "hi" ? "hi-IN" : "en-IN");
   const hindi = locale === "hi" || /[\u0900-\u097f]/.test(transcript);
-  const watercolour = /watercolou?r|वॉटरकलर|पेंटिंग/.test(normalized);
+  const watercolour = /watercolou?r|वॉटरकलर/.test(normalized);
+  const painting = /\bpaint(?:ing)?\b|पेंटिंग/.test(normalized);
   const card = /greeting card|card|शुभकामना कार्ड|कार्ड/.test(normalized);
   const thirtyMinutes = /30 minutes|30 मिनट|thirty minutes/.test(normalized);
   const fourDays = /four days|4 days|चार दिन|4 दिन/.test(normalized);
@@ -175,7 +185,9 @@ export function extractLearningWish(transcript: string, locale: Locale): Learnin
   const restarting = /restart|younger|फिर शुरू|युवावस्था/.test(normalized);
 
   return {
-    hobby: watercolour ? (hindi ? "वॉटरकलर पेंटिंग" : "Watercolour painting") : "",
+    hobby: watercolour
+      ? (hindi ? "वॉटरकलर पेंटिंग" : "Watercolour painting")
+      : painting ? (hindi ? "पेंटिंग" : "Painting") : "",
     experience: restarting
       ? (hindi ? "कई वर्षों बाद फिर शुरू कर रही हूँ" : "Restarting after many years")
       : "",
@@ -221,7 +233,17 @@ export function createProfileApiGateway({
       });
 
       if (!response.ok) {
-        throw new Error(`Profile save failed with status ${response.status}.`);
+        let code = "";
+        try {
+          const body = await response.json() as { detail?: { code?: string } };
+          code = body.detail?.code ?? "";
+        } catch {
+          // A non-JSON error body is still handled by its HTTP status below.
+        }
+        if (code === "maintenance_mode") throw new ProfileSaveError("maintenance");
+        if (response.status === 401) throw new ProfileSaveError("unauthorized");
+        if (response.status === 403) throw new ProfileSaveError("security");
+        throw new ProfileSaveError("unavailable");
       }
     },
   };

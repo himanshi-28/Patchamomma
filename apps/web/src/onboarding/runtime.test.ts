@@ -4,6 +4,7 @@ import {
   createDeterministicTranscriptAdapter,
   createProfileApiGateway,
   extractLearningWish,
+  ProfileSaveError,
 } from "./runtime";
 
 describe("SC-310 onboarding runtime", () => {
@@ -41,6 +42,37 @@ describe("SC-310 onboarding runtime", () => {
     expect(wish.availability).toBe("30 minutes · 4 days a week");
     expect(wish.planConsent).toBe(false);
     expect(wish.matchingConsent).toBe(false);
+  });
+
+  it("recognizes a plain request to learn painting without inventing optional details", () => {
+    const wish = extractLearningWish("I want to learn paint", "en");
+
+    expect(wish.hobby).toBe("Painting");
+    expect(wish.experience).toBe("");
+    expect(wish.goal).toBe("");
+  });
+
+  it("reports a maintenance response distinctly from a connection failure", async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      detail: { code: "maintenance_mode", message: "Temporarily paused." },
+    }), {
+      status: 503,
+      headers: { "Content-Type": "application/json" },
+    }));
+    const gateway = createProfileApiGateway({
+      apiBaseUrl: "https://api.example.test",
+      requestHeaders: async () => ({ Authorization: "Bearer token" }),
+      fetcher,
+    });
+
+    await expect(gateway.save({
+      ...extractLearningWish("I want to learn paint", "en"),
+      availability: "30 minutes · 4 days a week",
+      language: "English",
+      accessibility: "No support needed right now",
+      format: "At home · individual",
+      planConsent: true,
+    })).rejects.toEqual(expect.objectContaining<Partial<ProfileSaveError>>({ reason: "maintenance" }));
   });
 
   it("sends only reviewed structured fields to the authenticated profile boundary", async () => {

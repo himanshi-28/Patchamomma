@@ -13,6 +13,45 @@ interface FirebaseResources {
   appCheck: AppCheck | null;
 }
 
+interface GoogleSignInStrategy {
+  popup(): Promise<unknown>;
+  redirect(): Promise<unknown>;
+  popupTimeoutMs?: number;
+}
+
+const REDIRECTABLE_POPUP_ERRORS = new Set([
+  "auth/popup-blocked",
+  "auth/operation-not-supported-in-this-environment",
+  "auth/web-storage-unsupported",
+]);
+
+export async function signInWithPopupOrRedirect({
+  popup,
+  redirect,
+  popupTimeoutMs = 12_000,
+}: GoogleSignInStrategy): Promise<void> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const stalled = new Promise<"stalled">((resolve) => {
+    timeout = setTimeout(() => resolve("stalled"), popupTimeoutMs);
+  });
+
+  try {
+    const result = await Promise.race([
+      popup().then(() => "complete" as const),
+      stalled,
+    ]);
+    if (result === "stalled") await redirect();
+  } catch (error) {
+    const code = typeof error === "object" && error !== null && "code" in error
+      ? String(error.code)
+      : "";
+    if (!REDIRECTABLE_POPUP_ERRORS.has(code)) throw error;
+    await redirect();
+  } finally {
+    if (timeout !== undefined) clearTimeout(timeout);
+  }
+}
+
 export function createFirebaseAuthGateway(config: AuthRuntimeConfig): AuthGateway {
   let resourcesPromise: Promise<FirebaseResources> | null = null;
 
@@ -50,9 +89,9 @@ export function createFirebaseAuthGateway(config: AuthRuntimeConfig): AuthGatewa
         if (!config.firebase.appCheckSiteKey) {
           throw new Error("Firebase App Check is not configured: appCheckSiteKey");
         }
-        const { initializeAppCheck, ReCaptchaV3Provider } = await import("firebase/app-check");
+        const { initializeAppCheck, ReCaptchaEnterpriseProvider } = await import("firebase/app-check");
         appCheck = initializeAppCheck(app, {
-          provider: new ReCaptchaV3Provider(config.firebase.appCheckSiteKey),
+          provider: new ReCaptchaEnterpriseProvider(config.firebase.appCheckSiteKey),
           isTokenAutoRefreshEnabled: true,
         });
       }
@@ -70,7 +109,7 @@ export function createFirebaseAuthGateway(config: AuthRuntimeConfig): AuthGatewa
 
       void configuredResources()
         .then(async ({ auth }) => {
-          const { isSignInWithEmailLink, onAuthStateChanged, signInWithEmailLink } = await import("firebase/auth");
+          const { getRedirectResult, isSignInWithEmailLink, onAuthStateChanged, signInWithEmailLink } = await import("firebase/auth");
           if (isSignInWithEmailLink(auth, window.location.href)) {
             const pendingEmail = window.localStorage.getItem("sakhicircle-email-for-sign-in");
             if (!pendingEmail) {
@@ -82,6 +121,7 @@ export function createFirebaseAuthGateway(config: AuthRuntimeConfig): AuthGatewa
               window.localStorage.removeItem("sakhicircle-email-for-sign-in");
             }
           }
+          await getRedirectResult(auth);
           if (!active) return;
           unsubscribe = onAuthStateChanged(
             auth,
@@ -113,8 +153,12 @@ export function createFirebaseAuthGateway(config: AuthRuntimeConfig): AuthGatewa
     },
     async signInWithGoogle() {
       const { auth } = await configuredResources();
-      const { GoogleAuthProvider, signInWithPopup } = await import("firebase/auth");
-      await signInWithPopup(auth, new GoogleAuthProvider());
+      const { GoogleAuthProvider, signInWithPopup, signInWithRedirect } = await import("firebase/auth");
+      const provider = new GoogleAuthProvider();
+      await signInWithPopupOrRedirect({
+        popup: () => signInWithPopup(auth, provider),
+        redirect: () => signInWithRedirect(auth, provider),
+      });
     },
     async signInDemo() {
       throw new Error("Demo access is unavailable with Firebase authentication.");

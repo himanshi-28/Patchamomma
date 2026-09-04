@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { OnboardingFlow } from "./OnboardingFlow";
 import {
   createDeterministicTranscriptAdapter,
+  ProfileSaveError,
   TranscriptCaptureError,
 } from "./runtime";
 
@@ -107,5 +108,45 @@ describe("SC-310 onboarding flow", () => {
     expect(screen.getByLabelText("Editable transcript")).toHaveValue(completeTranscript);
     await user.click(screen.getByRole("button", { name: "Retry saving" }));
     expect(save).toHaveBeenCalledTimes(2);
+  });
+
+  it("allows experience and first goal to remain optional", async () => {
+    const user = userEvent.setup();
+    const save = vi.fn().mockResolvedValue(undefined);
+    render(<OnboardingFlow locale="en" transcriptAdapter={createDeterministicTranscriptAdapter()} profileGateway={{ save }} />);
+
+    await user.type(
+      screen.getByLabelText("Your learning wish"),
+      "I want to learn paint. I can practise for 30 minutes, four days a week. I prefer Hindi, larger text, and a small online group in Pune.",
+    );
+    await user.click(screen.getByRole("button", { name: "Review my details" }));
+
+    expect(screen.getByText("Your experience (optional)")).toBeVisible();
+    expect(screen.getByText("Your first goal (optional)")).toBeVisible();
+    expect(screen.getAllByText("Not provided (optional)")).toHaveLength(2);
+    await user.click(screen.getByRole("button", { name: "My words look right" }));
+    await user.click(screen.getByRole("checkbox", { name: /I agree SakhiCircle may use/ }));
+    await user.click(screen.getByRole("button", { name: "Confirm and create my 4-week plan" }));
+
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({
+      hobby: "Painting",
+      experience: "",
+      goal: "",
+    }));
+  });
+
+  it("explains when saving is paused for maintenance and keeps the draft", async () => {
+    const user = userEvent.setup();
+    const save = vi.fn().mockRejectedValue(new ProfileSaveError("maintenance"));
+    render(<OnboardingFlow locale="en" transcriptAdapter={createDeterministicTranscriptAdapter()} profileGateway={{ save }} />);
+
+    await user.type(screen.getByLabelText("Your learning wish"), completeTranscript);
+    await user.click(screen.getByRole("button", { name: "Review my details" }));
+    await user.click(screen.getByRole("button", { name: "My words look right" }));
+    await user.click(screen.getByRole("checkbox", { name: /I agree SakhiCircle may use/ }));
+    await user.click(screen.getByRole("button", { name: "Confirm and create my 4-week plan" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("temporarily paused for maintenance");
+    expect(screen.getByLabelText("Editable transcript")).toHaveValue(completeTranscript);
   });
 });
