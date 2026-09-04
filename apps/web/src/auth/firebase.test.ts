@@ -2,6 +2,20 @@ import { describe, expect, it, vi } from "vitest";
 import { signInWithPopupOrRedirect } from "./firebase";
 
 describe("Firebase Google sign-in compatibility", () => {
+  it("starts with a full-page redirect on privacy-focused browsers", async () => {
+    const popup = vi.fn();
+    const redirect = vi.fn().mockResolvedValue(undefined);
+
+    await signInWithPopupOrRedirect({
+      popup,
+      redirect,
+      preferRedirect: true,
+    });
+
+    expect(redirect).toHaveBeenCalledTimes(1);
+    expect(popup).not.toHaveBeenCalled();
+  });
+
   it("falls back to a full-page redirect when a browser leaves the popup pending", async () => {
     const redirect = vi.fn().mockResolvedValue(undefined);
 

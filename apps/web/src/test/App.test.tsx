@@ -77,7 +77,7 @@ describe("SakhiCircle app shell", () => {
     expect(screen.getByLabelText("Email address")).toBeVisible();
     expect(screen.getByRole("button", { name: "Send sign-in link" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Continue with Google" })).toBeVisible();
-    expect(screen.getByText(/Arc, allow pop-ups/)).toBeVisible();
+    expect(screen.getByText(/No popup permission is required/)).toBeVisible();
     expect(screen.queryByRole("button", { name: "Continue as Meera" })).not.toBeInTheDocument();
 
     await user.click(guide);

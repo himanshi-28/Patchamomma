@@ -1,6 +1,7 @@
 from dataclasses import replace
 
 import pytest
+
 from scripts.sc710_configured_evidence import (
     EVIDENCE_FIXTURE_SUBJECT_UID,
     MAXIMUM_BYTES_BILLED,

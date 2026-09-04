@@ -17,6 +17,7 @@ interface GoogleSignInStrategy {
   popup(): Promise<unknown>;
   redirect(): Promise<unknown>;
   popupTimeoutMs?: number;
+  preferRedirect?: boolean;
 }
 
 const REDIRECTABLE_POPUP_ERRORS = new Set([
@@ -29,7 +30,13 @@ export async function signInWithPopupOrRedirect({
   popup,
   redirect,
   popupTimeoutMs = 12_000,
+  preferRedirect = false,
 }: GoogleSignInStrategy): Promise<void> {
+  if (preferRedirect) {
+    await redirect();
+    return;
+  }
+
   let timeout: ReturnType<typeof setTimeout> | undefined;
   const stalled = new Promise<"stalled">((resolve) => {
     timeout = setTimeout(() => resolve("stalled"), popupTimeoutMs);
@@ -158,6 +165,7 @@ export function createFirebaseAuthGateway(config: AuthRuntimeConfig): AuthGatewa
       await signInWithPopupOrRedirect({
         popup: () => signInWithPopup(auth, provider),
         redirect: () => signInWithRedirect(auth, provider),
+        preferRedirect: config.adapterMode === "production",
       });
     },
     async signInDemo() {

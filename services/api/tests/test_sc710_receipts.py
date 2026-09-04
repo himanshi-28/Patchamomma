@@ -4,6 +4,8 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 import pytest
+from pydantic import ValidationError
+
 from app.analytics import (
     ANALYTICS_SCHEMA_VERSION,
     ActionReceiptClaims,
@@ -15,7 +17,6 @@ from app.analytics import (
     JourneyAnalyticsProperties,
     RecommendationAnalyticsProperties,
 )
-from pydantic import ValidationError
 
 NOW = datetime(2026, 9, 2, 8, 0, tzinfo=UTC)
 def analytics_service() -> AnalyticsService:

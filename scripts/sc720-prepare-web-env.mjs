@@ -18,7 +18,8 @@ export const ENV_FIELD_NAMES = Object.freeze([
   "VITE_FIREBASE_APP_CHECK_SITE_KEY",
 ]);
 
-const AUTH_DOMAIN = `${PROJECT_ID}.firebaseapp.com`;
+const SDK_AUTH_DOMAIN = `${PROJECT_ID}.firebaseapp.com`;
+const HOSTING_AUTH_DOMAIN = `${PROJECT_ID}.web.app`;
 const FIREBASE_TOOLS_VERSION = "15.28.1";
 const DEFAULT_TARGET_PATH = fileURLToPath(
   new URL("../apps/web/.env.production.local", import.meta.url),
@@ -60,7 +61,7 @@ export function buildProductionEnvironment({ sdkPayload, appCheckPayload }) {
   if (sdkConfig.appId !== APP_ID) {
     throw new Error("Firebase app does not match the approved app.");
   }
-  if (sdkConfig.authDomain !== AUTH_DOMAIN) {
+  if (sdkConfig.authDomain !== SDK_AUTH_DOMAIN) {
     throw new Error("Firebase auth domain does not match the approved auth domain.");
   }
 
@@ -86,7 +87,7 @@ export function buildProductionEnvironment({ sdkPayload, appCheckPayload }) {
     "VITE_ADAPTER_MODE=production",
     `VITE_API_BASE_URL=${API_BASE_URL}`,
     `VITE_FIREBASE_API_KEY=${apiKey}`,
-    `VITE_FIREBASE_AUTH_DOMAIN=${AUTH_DOMAIN}`,
+    `VITE_FIREBASE_AUTH_DOMAIN=${HOSTING_AUTH_DOMAIN}`,
     `VITE_FIREBASE_PROJECT_ID=${PROJECT_ID}`,
     `VITE_FIREBASE_APP_ID=${APP_ID}`,
     `VITE_FIREBASE_APP_CHECK_SITE_KEY=${siteKey}`,
@@ -125,7 +126,23 @@ async function writeEnvironmentFile(targetPath, environment) {
     throw new Error("Production environment file could not be read.");
   }
   if (existing !== environment) {
-    throw new Error("Refusing to overwrite different production configuration.");
+    const legacyAuthLine = `VITE_FIREBASE_AUTH_DOMAIN=${SDK_AUTH_DOMAIN}`;
+    const hostingAuthLine = `VITE_FIREBASE_AUTH_DOMAIN=${HOSTING_AUTH_DOMAIN}`;
+    const migratedEnvironment = existing.replace(legacyAuthLine, hostingAuthLine);
+    const legacyLineCount = existing.split(legacyAuthLine).length - 1;
+    if (legacyLineCount !== 1 || migratedEnvironment !== environment) {
+      throw new Error("Refusing to overwrite different production configuration.");
+    }
+    try {
+      await writeFile(targetPath, migratedEnvironment, {
+        encoding: "utf8",
+        mode: 0o600,
+      });
+      await chmod(targetPath, 0o600);
+    } catch {
+      throw new Error("Production environment file could not be written.");
+    }
+    return "migrated-auth-domain";
   }
   try {
     await chmod(targetPath, 0o600);

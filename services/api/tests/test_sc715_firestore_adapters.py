@@ -4,6 +4,9 @@ from datetime import UTC, datetime
 from typing import Any
 
 import pytest
+
+from app.config import Settings
+from app.journey import build_deterministic_journey
 from app.persistence import (
     JOURNEY_RECORD_VERSION,
     MATCHING_DATASET_RECORD_VERSION,
@@ -14,9 +17,6 @@ from app.persistence import (
     OperationalDataUnavailable,
     build_firestore_repositories,
 )
-
-from app.config import Settings
-from app.journey import build_deterministic_journey
 from app.profile import LearningWishProfile
 from app.synthetic_data import DATASET_VERSION, generate_synthetic_dataset
 

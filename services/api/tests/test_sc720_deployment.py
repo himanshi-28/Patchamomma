@@ -3,14 +3,14 @@ from datetime import UTC, datetime
 
 import pytest
 import yaml
+
+from app.persistence import MATCHING_DATASET_RECORD_VERSION
+from app.synthetic_data import DATASET_VERSION
 from scripts.sc720_deployment import (
     build_recommendation_catalog_document,
     catalog_publish_action,
     render_cloud_run_manifest,
 )
-
-from app.persistence import MATCHING_DATASET_RECORD_VERSION
-from app.synthetic_data import DATASET_VERSION
 
 PROJECT_ID = "patchamomma-2026-505415"
 PROJECT_NUMBER = "859217028205"

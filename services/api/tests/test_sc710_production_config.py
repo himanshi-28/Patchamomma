@@ -1,6 +1,7 @@
 import pytest
-from app.analytics_google import ProductionAnalyticsConfig
 from pydantic import ValidationError
+
+from app.analytics_google import ProductionAnalyticsConfig
 
 VALID_CONFIG = {
     "projectId": "test-project",

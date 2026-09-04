@@ -7,6 +7,9 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
+      workbox: {
+        navigateFallbackDenylist: [/^\/__\/auth\//, /^\/__\/firebase\//],
+      },
       manifest: {
         name: "SakhiCircle",
         short_name: "SakhiCircle",

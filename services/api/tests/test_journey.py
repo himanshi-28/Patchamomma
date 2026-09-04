@@ -5,8 +5,8 @@ from fastapi.testclient import TestClient
 
 from app.config import Settings
 from app.journey import JourneyDocument, build_curated_fallback, build_deterministic_journey
-from app.profile import LearningWishProfile
 from app.main import create_app
+from app.profile import LearningWishProfile
 
 AUTH_HEADERS = {"Authorization": "Bearer demo-learner-token"}
 PROFILE = {

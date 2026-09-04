@@ -24,4 +24,13 @@ describe("web release build contract", () => {
     expect(existsSync(resolve(webRoot, "public/pwa-512.png"))).toBe(true);
     expect(existsSync(resolve(webRoot, "public/pwa-maskable-512.png"))).toBe(true);
   });
+
+  it("keeps Firebase authentication helpers outside the PWA navigation fallback", () => {
+    const webRoot = resolve(process.cwd());
+    const viteConfig = readFileSync(resolve(webRoot, "vite.config.ts"), "utf8");
+
+    expect(viteConfig).toContain("navigateFallbackDenylist");
+    expect(viteConfig).toContain("/^\\/__\\/auth\\//");
+    expect(viteConfig).toContain("/^\\/__\\/firebase\\//");
+  });
 });

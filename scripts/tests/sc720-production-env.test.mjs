@@ -14,7 +14,8 @@ import {
 
 const API_KEY = `fake-${"a".repeat(32)}`;
 const SITE_KEY = `fake-site-${"b".repeat(32)}`;
-const AUTH_DOMAIN = `${PROJECT_ID}.firebaseapp.com`;
+const SDK_AUTH_DOMAIN = `${PROJECT_ID}.firebaseapp.com`;
+const HOSTING_AUTH_DOMAIN = `${PROJECT_ID}.web.app`;
 const API_BASE_URL =
   "https://sakhicircle-api-859217028205.asia-south1.run.app";
 
@@ -24,7 +25,7 @@ function sdkPayload(overrides = {}) {
     result: {
       sdkConfig: {
         apiKey: API_KEY,
-        authDomain: AUTH_DOMAIN,
+        authDomain: SDK_AUTH_DOMAIN,
         projectId: PROJECT_ID,
         appId: APP_ID,
         ...overrides,
@@ -58,7 +59,7 @@ test("SC-720 builds only the locked production environment", () => {
       "VITE_ADAPTER_MODE=production",
       `VITE_API_BASE_URL=${API_BASE_URL}`,
       `VITE_FIREBASE_API_KEY=${API_KEY}`,
-      `VITE_FIREBASE_AUTH_DOMAIN=${AUTH_DOMAIN}`,
+      `VITE_FIREBASE_AUTH_DOMAIN=${HOSTING_AUTH_DOMAIN}`,
       `VITE_FIREBASE_PROJECT_ID=${PROJECT_ID}`,
       `VITE_FIREBASE_APP_ID=${APP_ID}`,
       `VITE_FIREBASE_APP_CHECK_SITE_KEY=${SITE_KEY}`,
@@ -176,6 +177,30 @@ test("SC-720 is idempotent and will not overwrite different local configuration"
   await assert.rejects(
     prepareProductionEnvironment({ execute, targetPath }),
     /refusing to overwrite/i,
+  );
+});
+
+test("SC-720 migrates only the approved Firebase Hosting auth domain", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "sc720-production-env-"));
+  const targetPath = join(directory, ".env.production.local");
+  const execute = async (_executable, args) => ({
+    stdout: args.includes("apps:sdkconfig") ? sdkPayload() : appCheckPayload(),
+    stderr: "",
+  });
+
+  const legacyEnvironment = buildProductionEnvironment({
+    sdkPayload: sdkPayload(),
+    appCheckPayload: appCheckPayload(),
+  }).replace(HOSTING_AUTH_DOMAIN, SDK_AUTH_DOMAIN);
+  await writeFile(targetPath, legacyEnvironment, { mode: 0o600 });
+
+  assert.equal(
+    (await prepareProductionEnvironment({ execute, targetPath })).status,
+    "migrated-auth-domain",
+  );
+  assert.match(
+    await readFile(targetPath, "utf8"),
+    new RegExp(`VITE_FIREBASE_AUTH_DOMAIN=${HOSTING_AUTH_DOMAIN}`),
   );
 });
 

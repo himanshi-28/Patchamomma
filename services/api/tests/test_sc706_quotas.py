@@ -1,6 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
+
 from app.quotas import (
     InMemoryQuotaCounterStore,
     QuotaExceeded,
