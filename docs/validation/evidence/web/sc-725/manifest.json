@@ -1,0 +1,54 @@
+{
+  "task": "SC-725",
+  "status": "complete",
+  "capturedAt": "2026-09-06T00:07:19+05:30",
+  "timezone": "Asia/Kolkata",
+  "hostingUrl": "https://patchamomma-2026-505415.web.app",
+  "apiBaseUrl": "https://sakhicircle-api-859217028205.asia-south1.run.app",
+  "languages": [
+    "en",
+    "hi"
+  ],
+  "apiEvidence": {
+    "healthStatus": 200,
+    "readyStatus": 200,
+    "profileSaveStatus": 200,
+    "journeyCreateStatus": 200,
+    "journeySaveStatus": 200,
+    "recommendationStatus": 200
+  },
+  "browserEvidence": {
+    "mobileSignInActionsVisible": true,
+    "mobileHorizontalOverflow": 0,
+    "mobileVerticalOverflow": 0,
+    "syntheticRecommendation": true,
+    "recommendationScore": 100,
+    "recommendationReasons": 3
+  },
+  "userAttestation": {
+    "receivedAt": "2026-09-06",
+    "result": "works-as-designed",
+    "languages": [
+      "en",
+      "hi"
+    ],
+    "viewports": [
+      "mobile",
+      "desktop"
+    ],
+    "screenshotsRequired": false
+  },
+  "deploymentEvidence": {
+    "latestReadyRevision": "sakhicircle-api-00003-qdv",
+    "trafficPercent": 100,
+    "minimumInstances": 0,
+    "maximumInstances": 2,
+    "concurrency": 20,
+    "timeoutSeconds": 30,
+    "adapterMode": "production",
+    "paidApiCallsEnabled": false
+  },
+  "captures": [
+    "deployed-mobile-sign-in-en-360x800.jpg"
+  ]
+}

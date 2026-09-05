@@ -77,8 +77,8 @@ This file is the cross-chat source of truth. Each task targets one independently
 | SC-710 | Implement server-authoritative idempotent BigQuery event and one Looker Studio proof | SC-706 | Signed-receipt, durable-task, duplicate, forged-outcome and reporting-isolation integration tests pass | `DONE` — configured phases 1–8 and approved Looker proof complete 2026-09-03 |
 | SC-715 | Implement persistent Firestore profile, journey and recommendation adapters | SC-710 | Emulator integration tests pass; production never uses process-memory state or demo credentials | `DONE` — approved 2026-09-03 |
 | SC-720 | Deploy PWA to Firebase Hosting and FastAPI to Cloud Run | SC-715 | Preview/live URLs, `/health`, 0–2 runtime controls, maintenance, secret scan and local fallback pass | `DONE` — completed 2026-09-05; authenticated live profile save returned 200 |
-| SC-725 | Capture and approve the deployed English/Hindi vertical-slice evidence | SC-720 | Real browser flow, Cloud Run API evidence and mobile/desktop screenshots recorded | `READY` |
-| SC-730 | Complete accessibility/usability QA and backup demonstration video | SC-725 | Keyboard, screen reader, 200% zoom and judged flow pass | `PENDING` |
+| SC-725 | Capture and approve the deployed English/Hindi vertical-slice evidence | SC-720 | Real browser flow, Cloud Run API evidence and mobile/desktop screenshots recorded | `DONE` — user approved 2026-09-06; authenticated screenshots waived by explicit direction |
+| SC-730 | Complete accessibility/usability QA and backup demonstration video | SC-725 | Keyboard, screen reader, 200% zoom and judged flow pass | `READY` |
 | SC-750 | Lock September 7 submission | SC-730 | Tagged release, README, architecture diagram and demo script approved | `PENDING` |
 
 ## Deferred after the vertical slice
@@ -87,4 +87,4 @@ Production payments, full circle posting/chat, mentor marketplace operations, na
 
 ## Current next task
 
-`SC-720` is complete. Firebase Hosting serves the corrected artifact; Cloud Run revision `sakhicircle-api-00003-qdv` is Ready on immutable digest `sha256:cbfecb3d901ba8f2c26dc085539c85ba2071500c90dba0cab2867fdb20a57c98` with min 0/max 2 and paid calls disabled. Maintenance is off, `/ready` is 200, live CORS succeeds, and an authenticated production profile save returned HTTP 200 after the runtime service account received the narrowly scoped Firebase Authentication Viewer role. `SC-725` is ready but has not started. Keep the Mumbai queue and Looker Studio report paused.
+`SC-725` is complete and user-approved. Firebase Hosting sign-in fits 360×800 with zero overflow; the user verified the authenticated English/Hindi flow at mobile and desktop sizes and reported that it works as designed. Cloud Run request metadata independently confirms HTTP 200 for profile save, journey creation, journey confirmation, and recommendation on revision `sakhicircle-api-00003-qdv`. Additional authenticated screenshots were waived by explicit user direction. `SC-730` is ready. Keep the Mumbai queue and Looker Studio report paused.
