@@ -224,6 +224,18 @@ test("the default mobile shell avoids scrolling until optional guidance is expan
   await expectDocumentToFitViewport(page);
 });
 
+test("the default mobile shell still fits with slightly enlarged system text", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.goto("/");
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = "17px";
+  });
+  await page.getByRole("button", { name: "Continue as Meera" }).click();
+
+  await expectDocumentToFitViewport(page);
+  await expect(page.getByRole("button", { name: /How SakhiCircle works/ })).toBeInViewport({ ratio: 1 });
+});
+
 test("the Sakhi guide opens accessible help without leaving sign-in", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Hi, let me help you" }).click();
