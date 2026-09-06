@@ -119,7 +119,7 @@ test("login stays focused and the shell fits without overflow", async ({ page })
   await expect(page.getByText("A friendly place to learn, teach, and belong.")).toBeVisible();
   await expect(page.getByText("Sign in securely. No password needed.")).toBeVisible();
   await expect(page.getByRole("img", { name: "Sakhi, your SakhiCircle guide" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Hi, let me help you" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Hi, how may I help you?" })).toBeVisible();
   await expect(page.getByText("She made space for everyone else. This space is hers.")).toHaveCount(0);
 
   const loginFit = await page.evaluate(() => ({
@@ -134,8 +134,9 @@ test("login stays focused and the shell fits without overflow", async ({ page })
   expect(viewport).not.toBeNull();
   expect(signInBox).not.toBeNull();
   if (viewport && signInBox && viewport.width > 780) {
-    const signInCenter = signInBox.x + signInBox.width / 2;
-    expect(Math.abs(signInCenter - viewport.width / 2)).toBeLessThanOrEqual(2);
+    const signInRightGap = viewport.width - (signInBox.x + signInBox.width);
+    expect(signInRightGap).toBeGreaterThanOrEqual(0);
+    expect(signInRightGap).toBeLessThanOrEqual(64);
   }
 
   await page.getByRole("button", { name: "Continue as Meera" }).click();
@@ -238,7 +239,7 @@ test("the default mobile shell still fits with slightly enlarged system text", a
 
 test("the Sakhi guide opens accessible help without leaving sign-in", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Hi, let me help you" }).click();
+  await page.getByRole("button", { name: "Hi, how may I help you?" }).click();
 
   await expect(page.getByRole("region", { name: "Sakhi help" })).toBeVisible();
   await expect(page.getByText("What would you like help with?")).toBeVisible();
