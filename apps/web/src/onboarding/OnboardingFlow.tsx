@@ -1,10 +1,13 @@
-import { Check, ChevronDown, Mic, Pencil, RotateCcw } from "lucide-react";
+import { Check, ChevronDown, Mic, Pencil, RotateCcw, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   extractLearningWish,
+  createDeterministicProfileExtractionGateway,
   type LearningWish,
   type Locale,
   type ProfileGateway,
+  type ProfileExtractionGateway,
+  type ProfileExtractionSource,
   ProfileSaveError,
   type ProfileSaveFailure,
   TranscriptCaptureError,
@@ -16,6 +19,7 @@ interface OnboardingFlowProps {
   locale: Locale;
   transcriptAdapter: TranscriptAdapter;
   profileGateway: ProfileGateway;
+  extractionGateway?: ProfileExtractionGateway;
   onConfirmed?: (profile: LearningWish) => void;
 }
 
@@ -60,6 +64,12 @@ const copy = {
     startSpeaking: "Start speaking",
     listening: "Listening…",
     reviewAction: "Review my details",
+    extracting: "Finding details…",
+    extractionDisclosure: "When you review, SakhiCircle reads these words once to suggest form details. You still approve every field before anything is saved.",
+    aiSuggested: "AI suggested these details. Please check each one before saving.",
+    localSuggested: "SakhiCircle filled what it could from your words. Please check each detail.",
+    extractionFallback: "AI suggestions were unavailable, so we filled what we could on this device. Please add any missing details.",
+    suggestionStatus: "Suggestion status",
     privacy: "SakhiCircle never records or stores raw audio. Nothing is saved until you confirm.",
     voiceErrors: {
       permission_denied: "Microphone access was not allowed. Continue by typing above.",
@@ -85,6 +95,7 @@ const copy = {
       format: "How you prefer to learn",
       city: "City (optional)",
     },
+    goalContext: "What are you learning for? (optional)",
     edit: "Edit",
     saveDetail: "Save detail",
     missing: "Please add this",
@@ -117,6 +128,12 @@ const copy = {
     startSpeaking: "बोलना शुरू करें",
     listening: "सुन रही हूँ…",
     reviewAction: "मेरे विवरण जाँचें",
+    extracting: "विवरण ढूँढे जा रहे हैं…",
+    extractionDisclosure: "जाँचने पर SakhiCircle इन शब्दों को एक बार पढ़कर फ़ॉर्म के विवरण सुझाता है। कुछ सेव होने से पहले हर विवरण आप ही स्वीकार करेंगी।",
+    aiSuggested: "AI ने ये विवरण सुझाए हैं। सेव करने से पहले हर विवरण जाँचें।",
+    localSuggested: "SakhiCircle ने आपके शब्दों से जितने विवरण मिले, भर दिए हैं। हर विवरण जाँचें।",
+    extractionFallback: "AI सुझाव उपलब्ध नहीं थे, इसलिए इस डिवाइस पर जितने विवरण मिले वे भर दिए गए हैं। बाकी विवरण जोड़ें।",
+    suggestionStatus: "सुझाव की स्थिति",
     privacy: "SakhiCircle कच्ची ऑडियो रिकॉर्ड या सेव नहीं करता। आपकी पुष्टि तक कुछ भी सेव नहीं होता।",
     voiceErrors: {
       permission_denied: "माइक्रोफ़ोन की अनुमति नहीं मिली। ऊपर लिखकर जारी रखें।",
@@ -142,6 +159,7 @@ const copy = {
       format: "आप कैसे सीखना पसंद करेंगी?",
       city: "शहर (वैकल्पिक)",
     },
+    goalContext: "आप किस उद्देश्य से सीख रही हैं? (वैकल्पिक)",
     edit: "बदलें",
     saveDetail: "विवरण सेव करें",
     missing: "यह विवरण जोड़ें",
@@ -168,7 +186,7 @@ const copy = {
   },
 } as const;
 
-export function OnboardingFlow({ locale, transcriptAdapter, profileGateway, onConfirmed }: OnboardingFlowProps) {
+export function OnboardingFlow({ locale, transcriptAdapter, profileGateway, extractionGateway, onConfirmed }: OnboardingFlowProps) {
   const [stage, setStage] = useState<Stage>("capture");
   const [transcript, setTranscript] = useState("");
   const [wish, setWish] = useState<LearningWish>(() => extractLearningWish("", locale));
@@ -181,10 +199,14 @@ export function OnboardingFlow({ locale, transcriptAdapter, profileGateway, onCo
   const [changedFields, setChangedFields] = useState<Set<FieldKey>>(new Set());
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<ProfileSaveFailure | null>(null);
+  const [extracting, setExtracting] = useState(false);
+  const [extractionSource, setExtractionSource] = useState<ProfileExtractionSource | null>(null);
+  const [extractionFellBack, setExtractionFellBack] = useState(false);
   const reviewHeading = useRef<HTMLHeadingElement>(null);
   const successHeading = useRef<HTMLHeadingElement>(null);
   const voiceErrorRef = useRef<HTMLParagraphElement>(null);
   const text = copy[locale];
+  const detailsGateway = extractionGateway ?? createDeterministicProfileExtractionGateway();
 
   useEffect(() => {
     if (stage === "review") reviewHeading.current?.focus();
@@ -195,10 +217,25 @@ export function OnboardingFlow({ locale, transcriptAdapter, profileGateway, onCo
     if (voiceError) voiceErrorRef.current?.focus();
   }, [voiceError]);
 
-  const review = () => {
-    const extracted = extractLearningWish(transcript, locale);
+  const extractDetails = async () => {
+    try {
+      const result = await detailsGateway.extract(transcript, locale);
+      setExtractionSource(result.source);
+      setExtractionFellBack(result.source === "deterministic_fallback");
+      return result.fields;
+    } catch {
+      setExtractionSource("deterministic_fallback");
+      setExtractionFellBack(true);
+      return extractLearningWish(transcript, locale);
+    }
+  };
+
+  const review = async () => {
+    setExtracting(true);
+    const extracted = await extractDetails();
     setWish((current) => ({ ...extracted, planConsent: current.planConsent, matchingConsent: current.matchingConsent }));
     setTranscriptReviewed(false);
+    setExtracting(false);
     setStage("review");
   };
 
@@ -216,8 +253,9 @@ export function OnboardingFlow({ locale, transcriptAdapter, profileGateway, onCo
     }
   };
 
-  const updateDetails = () => {
-    const extracted = extractLearningWish(transcript, locale);
+  const updateDetails = async () => {
+    setExtracting(true);
+    const extracted = await extractDetails();
     const changed = new Set<FieldKey>();
     for (const key of [...requiredFields, "city" as const]) {
       if (extracted[key] !== wish[key]) changed.add(key);
@@ -225,6 +263,7 @@ export function OnboardingFlow({ locale, transcriptAdapter, profileGateway, onCo
     setWish({ ...extracted, planConsent: wish.planConsent, matchingConsent: wish.matchingConsent });
     setChangedFields(changed);
     setTranscriptReviewed(false);
+    setExtracting(false);
   };
 
   const beginEdit = (key: FieldKey) => {
@@ -307,10 +346,15 @@ export function OnboardingFlow({ locale, transcriptAdapter, profileGateway, onCo
             <strong>{transcriptAdapter.providerName}</strong>
             <span>{transcriptAdapter.providerPolicy}</span>
           </div>
+          <div className="provider-disclosure extraction-disclosure">
+            <strong>{detailsGateway.providerName}</strong>
+            <span>{detailsGateway.providerPolicy}</span>
+          </div>
         </div>
-        <p className="privacy-note"><Check aria-hidden="true" />{text.privacy}</p>
-        <button className="primary-button onboarding-primary" type="button" onClick={review} disabled={!transcript.trim()}>
-          {text.reviewAction}
+        <p className="privacy-note"><Check aria-hidden="true" />{text.privacy} {text.extractionDisclosure}</p>
+        <button className="primary-button onboarding-primary" type="button" onClick={review} disabled={!transcript.trim() || extracting}>
+          <Sparkles aria-hidden="true" />
+          {extracting ? text.extracting : text.reviewAction}
         </button>
       </section>
     );
@@ -322,6 +366,14 @@ export function OnboardingFlow({ locale, transcriptAdapter, profileGateway, onCo
         <p className="not-saved"><Check aria-hidden="true" />{text.nothingSaved}</p>
         <h1 id="onboarding-review-title" ref={reviewHeading} data-screen-heading tabIndex={-1}>{text.reviewTitle}</h1>
         <p>{text.reviewIntro}</p>
+        {extractionSource && (
+          <p className={`suggestion-status ${extractionFellBack ? "fallback" : ""}`} role="status" aria-label={text.suggestionStatus}>
+            <Sparkles aria-hidden="true" />
+            {extractionFellBack
+              ? text.extractionFallback
+              : extractionSource === "gemini" ? text.aiSuggested : text.localSuggested}
+          </p>
+        )}
       </div>
 
       <div className="review-layout">
@@ -342,8 +394,8 @@ export function OnboardingFlow({ locale, transcriptAdapter, profileGateway, onCo
               <button className="secondary-button" type="button" onClick={() => setTranscriptReviewed(true)}>
                 <Check aria-hidden="true" />{text.transcriptRight}
               </button>
-              <button className="text-button" type="button" onClick={updateDetails}>
-                <RotateCcw aria-hidden="true" />{text.update}
+              <button className="text-button" type="button" onClick={updateDetails} disabled={extracting}>
+                <RotateCcw aria-hidden="true" />{extracting ? text.extracting : text.update}
               </button>
             </div>
           </div>
@@ -374,6 +426,7 @@ export function OnboardingFlow({ locale, transcriptAdapter, profileGateway, onCo
                         {wish[key]
                           ? <strong>{wish[key]}</strong>
                           : <span className="missing-detail" role="status">{requiredFields.includes(key) ? text.missing : text.missingOptional}</span>}
+                        {key === "goal" && wish.goal && <span className="field-context">{text.goalContext}</span>}
                         {changedFields.has(key) && <small>{text.changed}</small>}
                       </div>
                       {editing === key ? (

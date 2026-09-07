@@ -98,6 +98,28 @@ def test_gemini_subject_limit_is_three_workflows_per_rolling_24_hours() -> None:
     quotas.reserve_gemini_workflow("subject-a", project_daily_allowance=20)
 
 
+def test_gemini_subject_limit_can_match_the_approved_project_allowance() -> None:
+    quotas = QuotaService(
+        InMemoryQuotaCounterStore(),
+        clock=lambda: datetime(2026, 9, 2, 8, 0, tzinfo=UTC),
+    )
+
+    for _ in range(20):
+        quotas.reserve_gemini_workflow(
+            "subject-a",
+            project_daily_allowance=20,
+            subject_rolling_allowance=20,
+        )
+
+    with pytest.raises(QuotaExceeded) as denied:
+        quotas.reserve_gemini_workflow(
+            "subject-a",
+            project_daily_allowance=20,
+            subject_rolling_allowance=20,
+        )
+    assert denied.value.code == "gemini_quota_exceeded"
+
+
 def test_gemini_project_allowance_is_atomic_and_never_above_immutable_20() -> None:
     quotas = QuotaService(
         InMemoryQuotaCounterStore(),

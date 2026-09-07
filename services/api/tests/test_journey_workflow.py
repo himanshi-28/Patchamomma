@@ -1,4 +1,5 @@
 import asyncio
+import json
 from collections.abc import Callable
 from datetime import date
 
@@ -12,9 +13,16 @@ from app.journey_workflow import (
     GoogleAdkJourneyWorkflow,
     JourneyWorkflowInput,
     JourneyWorkflowResult,
+    ReviewerOutput,
     WorkflowUnavailable,
+    _parse_adk_output,
 )
 from app.main import create_app
+from app.persistence import (
+    InMemoryJourneyRepository,
+    InMemoryProfileRepository,
+    InMemoryRecommendationRepository,
+)
 from app.profile import LearningWishProfile
 
 AUTH_HEADERS = {"Authorization": "Bearer demo-learner-token"}
@@ -300,12 +308,38 @@ def test_real_adk_pipeline_is_fixed_to_three_structured_stages_without_tools() -
     ]
     assert all(agent.tools == [] for agent in pipeline.sub_agents)
     assert all(agent.output_schema is not None for agent in pipeline.sub_agents)
+    assert all(
+        agent.generate_content_config.temperature is None
+        for agent in pipeline.sub_agents
+    )
+    assert all(
+        "additionalProperties" not in json.dumps(agent.output_schema.model_json_schema())
+        for agent in pipeline.sub_agents
+    )
+    assert all(
+        constraint not in json.dumps(agent.output_schema.model_json_schema())
+        for agent in pipeline.sub_agents
+        for constraint in ("minItems", "maxItems", "minLength", "maxLength")
+    )
     run_config = GoogleAdkJourneyWorkflow.build_run_config()
     assert run_config.max_llm_calls == 3
     assert run_config.telemetry.content_capturing_mode_value == ""
 
 
-def test_production_gemini_configuration_requires_explicit_paid_calls_and_secret() -> None:
+def test_adk_validated_dictionary_state_is_accepted_without_json_reparsing() -> None:
+    review = _parse_adk_output(ReviewerOutput, {"reviewCode": "pass"})
+
+    assert review.review_code == "pass"
+
+
+def test_gemini_prompts_require_topic_specific_plans_and_reject_generic_output() -> None:
+    from app.journey_workflow import PLAN_INSTRUCTION, REVIEW_INSTRUCTION
+
+    assert "specific to the confirmed hobby" in PLAN_INSTRUCTION
+    assert "could apply unchanged to a different hobby" in REVIEW_INSTRUCTION
+
+
+def test_production_gemini_configuration_requires_explicit_paid_calls_and_credentials() -> None:
     base = {
         "app_env": "production",
         "adapter_mode": "production",
@@ -317,3 +351,42 @@ def test_production_gemini_configuration_requires_explicit_paid_calls_and_secret
         Settings(**base)
     with pytest.raises(ValidationError, match="SAKHI_GEMINI_API_KEY"):
         Settings(**base, paid_api_calls_enabled=True)
+
+    vertex = Settings(
+        **base,
+        paid_api_calls_enabled=True,
+        gemini_backend="vertex_ai",
+        gemini_location="global",
+    )
+    assert vertex.gemini_api_key is None
+    assert vertex.gemini_backend == "vertex_ai"
+    assert vertex.journey_attempt_timeout_seconds == 180
+    assert vertex.profile_extraction_timeout_seconds == 10
+
+
+def test_production_uses_separate_models_for_extraction_and_adk_planning() -> None:
+    settings = Settings(
+        app_env="production",
+        adapter_mode="production",
+        firebase_project_id="sakhicircle-production",
+        firebase_app_id="web-app",
+        journey_adapter_mode="gemini_adk",
+        paid_api_calls_enabled=True,
+        gemini_backend="vertex_ai",
+        gemini_model="gemini-3.7-flash",
+        journey_gemini_model="gemini-2.5-flash",
+    )
+
+    app = create_app(
+        settings,
+        cost_control_reader=object(),
+        quota_service=object(),
+        analytics_service=object(),
+        profile_repository=InMemoryProfileRepository(),
+        journey_repository=InMemoryJourneyRepository(),
+        recommendation_repository=InMemoryRecommendationRepository(),
+    )
+
+    assert app.state.profile_extractor._model == "gemini-3.7-flash"
+    assert app.state.profile_extractor._timeout_seconds == 10
+    assert app.state.journey_workflow._model == "gemini-2.5-flash"

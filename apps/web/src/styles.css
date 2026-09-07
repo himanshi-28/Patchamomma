@@ -1482,6 +1482,11 @@ code {
   font-weight: 700;
 }
 
+.field-context {
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
+
 .field-row[data-changed="true"] {
   background: var(--color-surface-strong);
 }
@@ -1556,6 +1561,34 @@ code {
   margin-top: 12px;
 }
 
+.extraction-disclosure {
+  margin-top: 8px;
+}
+
+.suggestion-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 70ch;
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  color: var(--color-ink);
+  background: var(--color-surface-strong);
+  font-weight: 700;
+}
+
+.suggestion-status svg {
+  flex: 0 0 auto;
+  width: 22px;
+  margin-top: 2px;
+}
+
+.suggestion-status.fallback {
+  border: 1px solid var(--color-line);
+  background: var(--color-bg);
+}
+
 .storage-footnote {
   max-width: 70ch;
   margin: 12px 0 0 auto;
@@ -1615,10 +1648,18 @@ code {
 
 .fallback-notice {
   max-width: 70ch;
+  margin: 0;
   padding: 16px;
   border-radius: var(--radius-sm);
   background: var(--color-surface-strong);
   font-weight: 700;
+}
+
+.fallback-panel {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  margin: 16px 0 20px;
 }
 
 .journey-title-row {

@@ -148,6 +148,11 @@ def _plan_reservation(
             for timestamp in _normalized_timestamps(document.get("acceptedAt"))
             if timestamp > cutoff
         ]
+        if reservation.limit == 0:
+            raise QuotaExceeded(
+                code=reservation.failure_code,
+                retry_after=reservation.window_seconds,
+            )
         if len(accepted_at) >= reservation.limit:
             retry_at = min(accepted_at) + timedelta(seconds=reservation.window_seconds)
             raise QuotaExceeded(
@@ -352,10 +357,15 @@ class QuotaService:
         subject_key: str,
         *,
         project_daily_allowance: int,
+        subject_rolling_allowance: int = 3,
     ) -> None:
         if not 0 <= project_daily_allowance <= GEMINI_DEPLOYMENT_DAILY_MAXIMUM:
             raise ValueError(
                 "Gemini allowance cannot exceed the immutable deployment maximum of 20"
+            )
+        if not 0 <= subject_rolling_allowance <= GEMINI_DEPLOYMENT_DAILY_MAXIMUM:
+            raise ValueError(
+                "Gemini subject allowance cannot exceed the immutable deployment maximum of 20"
             )
         self._reserve(
             [
@@ -363,7 +373,7 @@ class QuotaService:
                     quota_name="gemini_workflow",
                     scope_kind="subject",
                     scope_key=subject_key,
-                    limit=3,
+                    limit=subject_rolling_allowance,
                     window_kind="rolling",
                     window_seconds=24 * 60 * 60,
                     failure_code="gemini_quota_exceeded",

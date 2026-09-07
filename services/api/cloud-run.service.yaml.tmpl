@@ -15,7 +15,7 @@ spec:
         autoscaling.knative.dev/maxScale: "2"
     spec:
       containerConcurrency: 20
-      timeoutSeconds: 30
+      timeoutSeconds: 420
       serviceAccountName: sakhi-runtime@patchamomma-2026-505415.iam.gserviceaccount.com
       containers:
         - image: asia-south1-docker.pkg.dev/patchamomma-2026-505415/sakhi-containers/sakhicircle-api@sha256:${IMAGE_DIGEST}
@@ -30,9 +30,27 @@ spec:
             - name: SAKHI_ADAPTER_MODE
               value: production
             - name: SAKHI_JOURNEY_ADAPTER_MODE
-              value: deterministic
+              value: gemini_adk
+            - name: SAKHI_JOURNEY_ATTEMPT_TIMEOUT_SECONDS
+              value: "180"
+            - name: SAKHI_PROFILE_EXTRACTION_TIMEOUT_SECONDS
+              value: "10"
             - name: SAKHI_PAID_API_CALLS_ENABLED
-              value: "false"
+              value: "true"
+            - name: SAKHI_GEMINI_MODEL
+              value: gemini-3.7-flash
+            - name: SAKHI_JOURNEY_GEMINI_MODEL
+              value: gemini-2.5-flash
+            - name: SAKHI_GEMINI_BACKEND
+              value: vertex_ai
+            - name: SAKHI_GEMINI_LOCATION
+              value: global
+            - name: GOOGLE_GENAI_USE_VERTEXAI
+              value: "true"
+            - name: GOOGLE_CLOUD_PROJECT
+              value: patchamomma-2026-505415
+            - name: GOOGLE_CLOUD_LOCATION
+              value: global
             - name: SAKHI_FIREBASE_PROJECT_ID
               value: patchamomma-2026-505415
             - name: SAKHI_FIREBASE_APP_ID

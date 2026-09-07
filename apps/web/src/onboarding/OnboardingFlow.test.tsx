@@ -4,6 +4,7 @@ import { run } from "axe-core";
 import { describe, expect, it, vi } from "vitest";
 import { OnboardingFlow } from "./OnboardingFlow";
 import {
+  createDeterministicProfileExtractionGateway,
   createDeterministicTranscriptAdapter,
   ProfileSaveError,
   TranscriptCaptureError,
@@ -133,6 +134,113 @@ describe("SC-310 onboarding flow", () => {
       experience: "",
       goal: "",
     }));
+  });
+
+  it("prefills the confirmation page from an arbitrary typed learning wish", async () => {
+    const user = userEvent.setup();
+    render(<OnboardingFlow locale="en" transcriptAdapter={createDeterministicTranscriptAdapter()} profileGateway={{ save: vi.fn() }} />);
+
+    await user.type(
+      screen.getByLabelText("Your learning wish"),
+      "I want to learn Kathak so I can perform a short piece. I have 30 minutes, four days a week.",
+    );
+    await user.click(screen.getByRole("button", { name: "Review my details" }));
+
+    expect(screen.getByText("Kathak")).toBeVisible();
+    expect(screen.getByText("Perform a short piece")).toBeVisible();
+    expect(screen.getByText("30 minutes · 4 days a week")).toBeVisible();
+    expect(screen.getByText("What are you learning for? (optional)")).toBeVisible();
+  });
+
+  it("shows a bounded AI suggestion state and keeps every suggested field editable", async () => {
+    const user = userEvent.setup();
+    let finishExtraction: ((value: unknown) => void) | undefined;
+    const extract = vi.fn().mockReturnValue(new Promise((resolve) => {
+      finishExtraction = resolve;
+    }));
+    render(
+      <OnboardingFlow
+        locale="en"
+        transcriptAdapter={createDeterministicTranscriptAdapter()}
+        profileGateway={{ save: vi.fn() }}
+        extractionGateway={{
+          providerName: "SakhiCircle AI",
+          providerPolicy: "Your words are processed once and are not stored.",
+          extract,
+        }}
+      />,
+    );
+
+    await user.type(screen.getByLabelText("Your learning wish"), "I want to learn Kathak.");
+    await user.click(screen.getByRole("button", { name: "Review my details" }));
+
+    expect(screen.getByRole("button", { name: "Finding details…" })).toBeDisabled();
+    finishExtraction?.({
+      source: "gemini",
+      fields: {
+        hobby: "Kathak",
+        experience: "New to this",
+        goal: "Perform a short piece",
+        availability: "30 minutes · 4 days a week",
+        language: "English and Hindi",
+        accessibility: "No support needed right now",
+        format: "At home · individual",
+        city: "",
+        planConsent: false,
+        matchingConsent: false,
+      },
+    });
+
+    expect(await screen.findByText("AI suggested these details. Please check each one before saving.")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Edit: What would you like to learn?" }));
+    expect(screen.getByLabelText("What would you like to learn?")).toHaveValue("Kathak");
+  });
+
+  it("falls back to local suggestions when AI extraction is unavailable", async () => {
+    const user = userEvent.setup();
+    render(
+      <OnboardingFlow
+        locale="en"
+        transcriptAdapter={createDeterministicTranscriptAdapter()}
+        profileGateway={{ save: vi.fn() }}
+        extractionGateway={{
+          providerName: "SakhiCircle AI",
+          providerPolicy: "Your words are processed once and are not stored.",
+          extract: vi.fn().mockRejectedValue(new Error("offline")),
+        }}
+      />,
+    );
+
+    await user.type(
+      screen.getByLabelText("Your learning wish"),
+      "I want to learn pottery so I can make diyas. I have 15 minutes, three days a week.",
+    );
+    await user.click(screen.getByRole("button", { name: "Review my details" }));
+
+    expect(await screen.findByRole("status", { name: "Suggestion status" })).toHaveTextContent(
+      "AI suggestions were unavailable, so we filled what we could on this device.",
+    );
+    expect(screen.getByText("Pottery")).toBeVisible();
+  });
+
+  it("labels intentionally local suggestions without claiming an AI failure", async () => {
+    const user = userEvent.setup();
+    render(
+      <OnboardingFlow
+        locale="en"
+        transcriptAdapter={createDeterministicTranscriptAdapter()}
+        profileGateway={{ save: vi.fn() }}
+        extractionGateway={createDeterministicProfileExtractionGateway()}
+      />,
+    );
+
+    await user.type(screen.getByLabelText("Your learning wish"), "I want to learn Kathak.");
+    await user.click(screen.getByRole("button", { name: "Review my details" }));
+
+    expect(await screen.findByRole("status", { name: "Suggestion status" })).toHaveTextContent(
+      "SakhiCircle filled what it could from your words.",
+    );
+    expect(screen.queryByText(/AI suggestions were unavailable/)).not.toBeInTheDocument();
   });
 
   it("explains when saving is paused for maintenance and keeps the draft", async () => {

@@ -46,7 +46,7 @@ def test_cloud_run_manifest_locks_the_approved_runtime_boundary() -> None:
 
     runtime = revision["spec"]
     assert runtime["containerConcurrency"] == 20
-    assert runtime["timeoutSeconds"] == 30
+    assert runtime["timeoutSeconds"] == 420
     assert runtime["serviceAccountName"] == RUNTIME_SERVICE_ACCOUNT
 
     assert len(runtime["containers"]) == 1
@@ -62,14 +62,26 @@ def test_cloud_run_manifest_locks_the_approved_runtime_boundary() -> None:
 def test_cloud_run_manifest_is_fail_closed_and_contains_no_secret_values() -> None:
     template, manifest = _render_manifest()
     container = manifest["spec"]["template"]["spec"]["containers"][0]
-    environment = {item["name"]: item["value"] for item in container["env"]}
+    environment = {
+        item["name"]: item.get("value", item.get("valueFrom"))
+        for item in container["env"]
+    }
 
     assert environment == {
         "SAKHI_APP_ENV": "production",
         "SAKHI_DEMO_MODE": "false",
         "SAKHI_ADAPTER_MODE": "production",
-        "SAKHI_JOURNEY_ADAPTER_MODE": "deterministic",
-        "SAKHI_PAID_API_CALLS_ENABLED": "false",
+        "SAKHI_JOURNEY_ADAPTER_MODE": "gemini_adk",
+        "SAKHI_JOURNEY_ATTEMPT_TIMEOUT_SECONDS": "180",
+        "SAKHI_PROFILE_EXTRACTION_TIMEOUT_SECONDS": "10",
+        "SAKHI_PAID_API_CALLS_ENABLED": "true",
+        "SAKHI_GEMINI_MODEL": "gemini-3.7-flash",
+        "SAKHI_JOURNEY_GEMINI_MODEL": "gemini-2.5-flash",
+        "SAKHI_GEMINI_BACKEND": "vertex_ai",
+        "SAKHI_GEMINI_LOCATION": "global",
+        "GOOGLE_GENAI_USE_VERTEXAI": "true",
+        "GOOGLE_CLOUD_PROJECT": PROJECT_ID,
+        "GOOGLE_CLOUD_LOCATION": "global",
         "SAKHI_FIREBASE_PROJECT_ID": PROJECT_ID,
         "SAKHI_FIREBASE_APP_ID": "1:859217028205:web:test-app-id",
         "SAKHI_FIRESTORE_DATABASE_ID": "(default)",
@@ -120,3 +132,11 @@ def test_docker_build_context_excludes_local_and_generated_files() -> None:
         "**/*.py[cod]",
         "tests/",
     } <= exclusions
+
+
+def test_container_dependencies_pin_the_verified_adk_vertex_runtime() -> None:
+    project = (API_ROOT / "pyproject.toml").read_text()
+
+    assert '"google-adk==2.7.1"' in project
+    assert '"google-genai==2.20.0"' in project
+    assert '"pydantic==2.13.4"' in project

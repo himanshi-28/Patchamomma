@@ -16,6 +16,7 @@ PROJECT_ID = "patchamomma-2026-505415"
 PROJECT_NUMBER = "859217028205"
 REGION = "asia-south1"
 SERVICE_NAME = "sakhicircle-api"
+PRIMARY_HOSTING_SITE_ID = "sakhi-circle"
 FIREBASE_APP_ID = "1:859217028205:web:eaf322c7cc7555721e0b64"
 CLOUD_RUN_URL = (
     f"https://{SERVICE_NAME}-{PROJECT_NUMBER}.{REGION}.run.app"
@@ -23,14 +24,19 @@ CLOUD_RUN_URL = (
 LIVE_ORIGINS = [
     f"https://{PROJECT_ID}.web.app",
     f"https://{PROJECT_ID}.firebaseapp.com",
+    f"https://{PRIMARY_HOSTING_SITE_ID}.web.app",
+    f"https://{PRIMARY_HOSTING_SITE_ID}.firebaseapp.com",
 ]
 PREVIEW_ORIGIN = f"https://{PROJECT_ID}--sc720-preview-a1b2c3.web.app"
 NOW = datetime(2026, 9, 3, 13, 0, tzinfo=UTC)
 
 
-def _environment(manifest: dict) -> dict[str, str]:
+def _environment(manifest: dict) -> dict[str, object]:
     container = manifest["spec"]["template"]["spec"]["containers"][0]
-    return {item["name"]: item["value"] for item in container["env"]}
+    return {
+        item["name"]: item.get("value", item.get("valueFrom"))
+        for item in container["env"]
+    }
 
 
 def test_renderer_binds_the_immutable_image_and_exact_production_origins() -> None:

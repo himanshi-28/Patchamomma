@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "patchamomma-2026-505415"
+  },
+  "targets": {
+    "patchamomma-2026-505415": {
+      "hosting": {
+        "production": [
+          "sakhi-circle"
+        ]
+      }
+    }
+  }
+}
