@@ -222,9 +222,9 @@ p {
 
 .login-layout {
   display: grid;
-  grid-template-columns: minmax(280px, 1fr) minmax(420px, 470px) minmax(280px, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(420px, 470px);
   align-items: center;
-  gap: 32px;
+  gap: 48px;
   width: min(1216px, calc(100% - 64px));
   min-height: calc(100dvh - 72px);
   margin: 0 auto;
@@ -257,10 +257,9 @@ p {
 .guide-portrait {
   position: absolute;
   bottom: 0;
-  left: 50%;
-  width: min(100cqw, 440px, calc(67.87cqh - 57px));
+  right: 0;
+  width: min(52cqw, 390px, calc(67.87cqh - 57px));
   aspect-ratio: 1033 / 1522;
-  transform: translateX(-50%);
 }
 
 .guide-trigger img {
@@ -276,55 +275,66 @@ p {
 .guide-bubble {
   position: absolute;
   z-index: 2;
-  top: -64px;
-  left: 50%;
+  top: -56px;
+  right: calc(100% - 20px);
   display: inline-flex;
   align-items: center;
   gap: 9px;
   min-height: 52px;
   padding: 12px 16px;
   white-space: nowrap;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-lg) var(--radius-sm);
   color: var(--color-ink);
   background: var(--color-bg);
   font-weight: 800;
-  transform: translateX(-50%);
   box-shadow: 0 4px 8px color-mix(in srgb, var(--color-ink) 14%, transparent);
   transition: box-shadow var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out);
 }
 
 .guide-trigger:hover .guide-bubble {
-  transform: translateX(-50%) translateY(-2px);
+  transform: translateY(-2px);
   box-shadow: var(--shadow-overlay);
 }
 
 .guide-trigger:active .guide-bubble {
-  transform: translateX(-50%);
+  transform: none;
 }
 
 .guide-bubble::after {
   position: absolute;
   bottom: -7px;
-  left: 50%;
+  right: 18px;
   width: 14px;
   height: 14px;
   content: "";
-  transform: translateX(-50%) rotate(45deg);
+  transform: rotate(45deg);
   background: var(--color-bg);
 }
 
 .guide-conversation {
   position: absolute;
   z-index: 10;
-  top: 22px;
-  right: 22px;
-  left: 22px;
+  top: 196px;
+  right: auto;
+  left: 0;
+  width: 44cqw;
   padding: 22px;
   border-radius: var(--radius-md);
   color: var(--color-ink);
   background: var(--color-surface-soft);
   box-shadow: var(--shadow-overlay);
   animation: content-enter var(--duration-medium) var(--ease-out) both;
+}
+
+.guide-conversation::after {
+  position: absolute;
+  top: 34px;
+  right: -7px;
+  width: 14px;
+  height: 14px;
+  content: "";
+  transform: rotate(45deg);
+  background: var(--color-surface-soft);
 }
 
 .guide-conversation > strong {
@@ -1138,7 +1148,8 @@ code {
 
 @media (min-width: 781px) and (max-width: 1100px) {
   .login-layout {
-    grid-template-columns: minmax(280px, 0.85fr) minmax(400px, 470px);
+    grid-template-columns: minmax(360px, 1fr) minmax(400px, 440px);
+    gap: 24px;
     width: min(940px, calc(100% - 48px));
   }
 
@@ -1148,6 +1159,25 @@ code {
 
   .sign-in-panel {
     grid-column: 2;
+  }
+
+  .guide-conversation {
+    top: 184px;
+    width: 47cqw;
+    padding: 16px;
+  }
+
+  .guide-conversation > strong {
+    padding-right: 36px;
+    font-size: 1rem;
+  }
+
+  .guide-topics {
+    display: grid;
+  }
+
+  .guide-topics button {
+    width: 100%;
   }
 }
 
@@ -1452,6 +1482,11 @@ code {
   font-weight: 700;
 }
 
+.field-context {
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
+
 .field-row[data-changed="true"] {
   background: var(--color-surface-strong);
 }
@@ -1526,6 +1561,34 @@ code {
   margin-top: 12px;
 }
 
+.extraction-disclosure {
+  margin-top: 8px;
+}
+
+.suggestion-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 70ch;
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  color: var(--color-ink);
+  background: var(--color-surface-strong);
+  font-weight: 700;
+}
+
+.suggestion-status svg {
+  flex: 0 0 auto;
+  width: 22px;
+  margin-top: 2px;
+}
+
+.suggestion-status.fallback {
+  border: 1px solid var(--color-line);
+  background: var(--color-bg);
+}
+
 .storage-footnote {
   max-width: 70ch;
   margin: 12px 0 0 auto;
@@ -1585,10 +1648,18 @@ code {
 
 .fallback-notice {
   max-width: 70ch;
+  margin: 0;
   padding: 16px;
   border-radius: var(--radius-sm);
   background: var(--color-surface-strong);
   font-weight: 700;
+}
+
+.fallback-panel {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  margin: 16px 0 20px;
 }
 
 .journey-title-row {

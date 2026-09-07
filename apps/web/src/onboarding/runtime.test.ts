@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  createProfileExtractionApiGateway,
   createTranscriptAdapterForMode,
   createDeterministicTranscriptAdapter,
   createProfileApiGateway,
@@ -50,6 +51,60 @@ describe("SC-310 onboarding runtime", () => {
     expect(wish.hobby).toBe("Painting");
     expect(wish.experience).toBe("");
     expect(wish.goal).toBe("");
+  });
+
+  it("extracts any clearly stated learning topic, goal, and supported time choice", () => {
+    const kathak = extractLearningWish("I want to learn Kathak.", "en");
+    const pottery = extractLearningWish(
+      "I want to learn pottery so I can make diyas. I have 15 minutes, three days a week.",
+      "en",
+    );
+
+    expect(kathak.hobby).toBe("Kathak");
+    expect(pottery.hobby).toBe("Pottery");
+    expect(pottery.goal).toBe("Make diyas");
+    expect(pottery.availability).toBe("15 minutes · 3 days a week");
+  });
+
+  it("requests private AI suggestions without storing or adding consent", async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      source: "gemini",
+      fields: {
+        hobby: "Kathak",
+        experience: "New to this",
+        goal: "Perform a short piece",
+        availability: "30 minutes · 4 days a week",
+        language: "English and Hindi",
+        accessibility: "No support needed right now",
+        format: "At home · individual",
+        city: "",
+      },
+    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+    const gateway = createProfileExtractionApiGateway({
+      apiBaseUrl: "https://api.example.test",
+      requestHeaders: async () => ({ Authorization: "Bearer token" }),
+      fetcher,
+    });
+
+    const result = await gateway.extract(
+      "I want to learn Kathak and perform a short piece.",
+      "en",
+    );
+
+    expect(result.source).toBe("gemini");
+    expect(result.fields.hobby).toBe("Kathak");
+    expect(result.fields.planConsent).toBe(false);
+    expect(result.fields.matchingConsent).toBe(false);
+    expect(fetcher).toHaveBeenCalledWith(
+      "https://api.example.test/api/v1/profile/extractions",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          transcript: "I want to learn Kathak and perform a short piece.",
+          locale: "en",
+        }),
+      }),
+    );
   });
 
   it("reports a maintenance response distinctly from a connection failure", async () => {

@@ -131,12 +131,25 @@ describe("SC-410 journey flow", () => {
     expect(screen.getByRole("button", { name: "Create another plan" })).toBeVisible();
   });
 
-  it("shows the approved calm notice for a validated curated fallback", async () => {
-    render(<JourneyFlow locale="en" gateway={{ create: vi.fn().mockResolvedValue(makeDraft(true)), confirm: vi.fn() }} />);
+  it("offers an in-place retry from a validated curated fallback", async () => {
+    const user = userEvent.setup();
+    const personalised = {
+      ...makeDraft(),
+      title: bilingual("Your personalised pottery plan", "आपकी व्यक्तिगत पॉटरी योजना"),
+    };
+    const create = vi.fn()
+      .mockResolvedValueOnce(makeDraft(true))
+      .mockResolvedValueOnce(personalised);
+    render(<JourneyFlow locale="en" gateway={{ create, confirm: vi.fn() }} />);
 
     expect(await screen.findByRole("status")).toHaveTextContent(
       "We couldn't create a personalised plan just now. Here is a reviewed four-week plan you can use or edit.",
     );
+    await user.click(screen.getByRole("button", { name: "Try personalised plan again" }));
+
+    expect(await screen.findByRole("heading", { name: personalised.title.en })).toBeVisible();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(create).toHaveBeenCalledTimes(2);
   });
 
   it("restores a confirmed journey read-only without regenerating it", async () => {

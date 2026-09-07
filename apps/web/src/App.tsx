@@ -27,6 +27,7 @@ import { OnboardingFlow } from "./onboarding/OnboardingFlow";
 import {
   createDeterministicTranscriptAdapter,
   type ProfileGateway,
+  type ProfileExtractionGateway,
   type TranscriptAdapter,
 } from "./onboarding/runtime";
 import type { RecommendationGateway } from "./recommendation/runtime";
@@ -39,6 +40,7 @@ interface AppProps {
   authGateway?: AuthGateway;
   transcriptAdapter?: TranscriptAdapter;
   profileGateway?: ProfileGateway;
+  profileExtractionGateway?: ProfileExtractionGateway;
   journeyGateway?: JourneyGateway;
   recommendationGateway?: RecommendationGateway;
 }
@@ -119,7 +121,7 @@ const copy: Record<Locale, Copy> = {
     mentorsBody: "Verified mentors and their available sessions will appear here after we understand your goal.",
     login: {
       meetGuide: "Meet Sakhi, your guide",
-      guideTrigger: "Hi, let me help you",
+      guideTrigger: "Hi, how may I help you?",
       guideImageAlt: "Sakhi, your SakhiCircle guide",
       guideRegion: "Sakhi help",
       guideClose: "Close Sakhi help",
@@ -226,6 +228,7 @@ export function App({
   authGateway,
   transcriptAdapter,
   profileGateway,
+  profileExtractionGateway,
   journeyGateway,
   recommendationGateway,
 }: AppProps) {
@@ -583,6 +586,7 @@ export function App({
               locale={locale}
               transcriptAdapter={voiceAdapter}
               profileGateway={profileBoundary}
+              extractionGateway={profileExtractionGateway}
               onConfirmed={journeyGateway ? (profile) => {
                 setMatchingConsent(profile.matchingConsent);
                 setJourneyStarted(true);

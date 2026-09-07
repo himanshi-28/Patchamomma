@@ -15,7 +15,8 @@ import {
 const API_KEY = `fake-${"a".repeat(32)}`;
 const SITE_KEY = `fake-site-${"b".repeat(32)}`;
 const SDK_AUTH_DOMAIN = `${PROJECT_ID}.firebaseapp.com`;
-const HOSTING_AUTH_DOMAIN = `${PROJECT_ID}.web.app`;
+const LEGACY_HOSTING_AUTH_DOMAIN = `${PROJECT_ID}.web.app`;
+const HOSTING_AUTH_DOMAIN = "sakhi-circle.web.app";
 const API_BASE_URL =
   "https://sakhicircle-api-859217028205.asia-south1.run.app";
 
@@ -180,28 +181,32 @@ test("SC-720 is idempotent and will not overwrite different local configuration"
   );
 });
 
-test("SC-720 migrates only the approved Firebase Hosting auth domain", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "sc720-production-env-"));
-  const targetPath = join(directory, ".env.production.local");
-  const execute = async (_executable, args) => ({
-    stdout: args.includes("apps:sdkconfig") ? sdkPayload() : appCheckPayload(),
-    stderr: "",
-  });
+test("SC-720 migrates only approved legacy Firebase auth domains", async (context) => {
+  for (const legacyAuthDomain of [SDK_AUTH_DOMAIN, LEGACY_HOSTING_AUTH_DOMAIN]) {
+    await context.test(legacyAuthDomain, async () => {
+      const directory = await mkdtemp(join(tmpdir(), "sc720-production-env-"));
+      const targetPath = join(directory, ".env.production.local");
+      const execute = async (_executable, args) => ({
+        stdout: args.includes("apps:sdkconfig") ? sdkPayload() : appCheckPayload(),
+        stderr: "",
+      });
 
-  const legacyEnvironment = buildProductionEnvironment({
-    sdkPayload: sdkPayload(),
-    appCheckPayload: appCheckPayload(),
-  }).replace(HOSTING_AUTH_DOMAIN, SDK_AUTH_DOMAIN);
-  await writeFile(targetPath, legacyEnvironment, { mode: 0o600 });
+      const legacyEnvironment = buildProductionEnvironment({
+        sdkPayload: sdkPayload(),
+        appCheckPayload: appCheckPayload(),
+      }).replace(HOSTING_AUTH_DOMAIN, legacyAuthDomain);
+      await writeFile(targetPath, legacyEnvironment, { mode: 0o600 });
 
-  assert.equal(
-    (await prepareProductionEnvironment({ execute, targetPath })).status,
-    "migrated-auth-domain",
-  );
-  assert.match(
-    await readFile(targetPath, "utf8"),
-    new RegExp(`VITE_FIREBASE_AUTH_DOMAIN=${HOSTING_AUTH_DOMAIN}`),
-  );
+      assert.equal(
+        (await prepareProductionEnvironment({ execute, targetPath })).status,
+        "migrated-auth-domain",
+      );
+      assert.match(
+        await readFile(targetPath, "utf8"),
+        new RegExp(`VITE_FIREBASE_AUTH_DOMAIN=${HOSTING_AUTH_DOMAIN}`),
+      );
+    });
+  }
 });
 
 test("SC-720 converts CLI failures to fixed non-disclosing errors", async () => {

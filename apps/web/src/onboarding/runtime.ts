@@ -73,6 +73,19 @@ export interface ProfileGateway {
   save(profile: LearningWish): Promise<void>;
 }
 
+export type ProfileExtractionSource = "gemini" | "deterministic" | "deterministic_fallback";
+
+export interface ProfileExtractionResult {
+  source: ProfileExtractionSource;
+  fields: LearningWish;
+}
+
+export interface ProfileExtractionGateway {
+  readonly providerName: string;
+  readonly providerPolicy: string;
+  extract(transcript: string, locale: Locale): Promise<ProfileExtractionResult>;
+}
+
 export type ProfileSaveFailure = "maintenance" | "unauthorized" | "security" | "unavailable";
 
 export class ProfileSaveError extends Error {
@@ -175,25 +188,40 @@ export function extractLearningWish(transcript: string, locale: Locale): Learnin
   const watercolour = /watercolou?r|वॉटरकलर/.test(normalized);
   const painting = /\bpaint(?:ing)?\b|पेंटिंग/.test(normalized);
   const card = /greeting card|card|शुभकामना कार्ड|कार्ड/.test(normalized);
-  const thirtyMinutes = /30 minutes|30 मिनट|thirty minutes/.test(normalized);
-  const fourDays = /four days|4 days|चार दिन|4 दिन/.test(normalized);
+  const availabilityChoices = [
+    { minutes: 15, days: 3, pattern: /(?:15|fifteen)\s*minutes?.*?(?:3|three)\s*days?|15 मिनट.*?(?:3|तीन) दिन/ },
+    { minutes: 30, days: 4, pattern: /(?:30|thirty)\s*minutes?.*?(?:4|four)\s*days?|30 मिनट.*?(?:4|चार) दिन/ },
+    { minutes: 45, days: 5, pattern: /(?:45|forty[- ]five)\s*minutes?.*?(?:5|five)\s*days?|45 मिनट.*?(?:5|पाँच) दिन/ },
+  ];
   const hindiPlan = /hindi|हिंदी/.test(normalized);
   const largerText = /larger text|large text|बड़ा टेक्स्ट/.test(normalized);
   const seated = /seated|बैठकर/.test(normalized);
   const group = /online group|small group|ऑनलाइन समूह|छोटे ऑनलाइन समूह/.test(normalized);
   const pune = /pune|पुणे/.test(normalized);
   const restarting = /restart|younger|फिर शुरू|युवावस्था/.test(normalized);
+  const genericHobby = !hindi
+    ? transcript.match(/\b(?:want|would like|wish|hope) to (?:learn|begin|start|restart)\s+(.+?)(?=\s+(?:so (?:that )?i can|because|and (?:make|create|perform))\b|[.,!?]|$)/i)?.[1]?.trim()
+    : "";
+  const genericGoal = !hindi
+    ? transcript.match(/\b(?:so (?:that )?i can|and (?:i want to )?)\s+([^.!?]+)/i)?.[1]?.trim()
+    : "";
+  const availabilityChoice = availabilityChoices.find(({ pattern }) => pattern.test(normalized));
+  const titleCase = (value: string) => value
+    ? `${value.charAt(0).toLocaleUpperCase()}${value.slice(1)}`.replace(/[\s.,!?]+$/, "")
+    : "";
 
   return {
     hobby: watercolour
       ? (hindi ? "वॉटरकलर पेंटिंग" : "Watercolour painting")
-      : painting ? (hindi ? "पेंटिंग" : "Painting") : "",
+      : painting ? (hindi ? "पेंटिंग" : "Painting") : titleCase(genericHobby ?? ""),
     experience: restarting
       ? (hindi ? "कई वर्षों बाद फिर शुरू कर रही हूँ" : "Restarting after many years")
       : "",
-    goal: card ? (hindi ? "शुभकामना कार्ड बनाना" : "Paint a greeting card") : "",
-    availability: thirtyMinutes && fourDays
-      ? (hindi ? "30 मिनट · सप्ताह में 4 दिन" : "30 minutes · 4 days a week")
+    goal: card ? (hindi ? "शुभकामना कार्ड बनाना" : "Paint a greeting card") : titleCase(genericGoal ?? ""),
+    availability: availabilityChoice
+      ? (hindi
+          ? `${availabilityChoice.minutes} मिनट · सप्ताह में ${availabilityChoice.days} दिन`
+          : `${availabilityChoice.minutes} minutes · ${availabilityChoice.days} days a week`)
       : "",
     language: hindiPlan ? (hindi ? "हिंदी" : "Hindi") : "",
     accessibility: largerText
@@ -207,6 +235,51 @@ export function extractLearningWish(transcript: string, locale: Locale): Learnin
     planConsent: false,
     matchingConsent: false,
     city: pune ? (hindi ? "पुणे" : "Pune") : "",
+  };
+}
+
+export function createDeterministicProfileExtractionGateway(): ProfileExtractionGateway {
+  return {
+    providerName: "SakhiCircle private local suggestions",
+    providerPolicy: "Your words stay on this device until you confirm your reviewed details.",
+    async extract(transcript, locale) {
+      return { source: "deterministic", fields: extractLearningWish(transcript, locale) };
+    },
+  };
+}
+
+interface ProfileExtractionApiGatewayOptions {
+  apiBaseUrl: string;
+  requestHeaders(): Promise<Record<string, string>>;
+  fetcher?: typeof fetch;
+}
+
+export function createProfileExtractionApiGateway({
+  apiBaseUrl,
+  requestHeaders,
+  fetcher = fetch,
+}: ProfileExtractionApiGatewayOptions): ProfileExtractionGateway {
+  return {
+    providerName: "SakhiCircle AI suggestions",
+    providerPolicy: "When you review, your words are processed once to suggest details and are not stored.",
+    async extract(transcript, locale) {
+      const response = await fetcher(`${apiBaseUrl.replace(/\/$/, "")}/api/v1/profile/extractions`, {
+        method: "POST",
+        headers: {
+          ...(await requestHeaders()),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ transcript, locale }),
+      });
+      if (!response.ok) throw new Error(`Profile extraction failed with status ${response.status}.`);
+      const result = await response.json() as Omit<ProfileExtractionResult, "fields"> & {
+        fields: Omit<LearningWish, "planConsent" | "matchingConsent">;
+      };
+      return {
+        ...result,
+        fields: { ...result.fields, planConsent: false, matchingConsent: false },
+      };
+    },
   };
 }
 

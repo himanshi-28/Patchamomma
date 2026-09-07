@@ -15,7 +15,12 @@ import {
 } from "./auth/runtime";
 import { resolveApiBaseUrl } from "./deployment/runtime";
 import { createJourneyApiGateway } from "./journey/runtime";
-import { createProfileApiGateway, createTranscriptAdapterForMode } from "./onboarding/runtime";
+import {
+  createDeterministicProfileExtractionGateway,
+  createProfileApiGateway,
+  createProfileExtractionApiGateway,
+  createTranscriptAdapterForMode,
+} from "./onboarding/runtime";
 import { createRecommendationApiGateway } from "./recommendation/runtime";
 import "./styles.css";
 
@@ -56,6 +61,13 @@ const profileGateway = createProfileApiGateway({
   requestHeaders: () => protectedRequestHeaders(authGateway, adapterMode),
   fetcher: analyticsAwareFetch,
 });
+const profileExtractionGateway = adapterMode === "deterministic"
+  ? createDeterministicProfileExtractionGateway()
+  : createProfileExtractionApiGateway({
+      apiBaseUrl,
+      requestHeaders: () => protectedRequestHeaders(authGateway, adapterMode),
+      fetcher: analyticsAwareFetch,
+    });
 const journeyGateway = createJourneyApiGateway({
   apiBaseUrl,
   requestHeaders: () => protectedRequestHeaders(authGateway, adapterMode),
@@ -74,6 +86,7 @@ createRoot(root).render(
       authGateway={authGateway}
       transcriptAdapter={transcriptAdapter}
       profileGateway={profileGateway}
+      profileExtractionGateway={profileExtractionGateway}
       journeyGateway={journeyGateway}
       recommendationGateway={recommendationGateway}
     />

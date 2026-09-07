@@ -46,6 +46,7 @@ const copy = {
     saveDay: "Save day",
     safety: "Safety note",
     fallback: "We couldn't create a personalised plan just now. Here is a reviewed four-week plan you can use or edit.",
+    retryPersonalised: "Try personalised plan again",
     reject: "Reject this draft",
     confirm: "Confirm and save my plan",
     confirming: "Saving your confirmed plan…",
@@ -84,6 +85,7 @@ const copy = {
     saveDay: "दिन सेव करें",
     safety: "सुरक्षा नोट",
     fallback: "अभी आपकी व्यक्तिगत योजना नहीं बन सकी। यहाँ चार सप्ताह की जाँची हुई योजना है, जिसे आप इस्तेमाल या संपादित कर सकती हैं।",
+    retryPersonalised: "व्यक्तिगत योजना फिर बनाएँ",
     reject: "यह ड्राफ़्ट अस्वीकार करें",
     confirm: "पुष्टि करके योजना सेव करें",
     confirming: "आपकी पुष्टि की हुई योजना सेव हो रही है…",
@@ -312,7 +314,14 @@ export function JourneyFlow({
     <section className="journey-flow" aria-labelledby="journey-title">
       <header className="journey-heading">
         <p className="not-saved"><Check aria-hidden="true" />{text.notSaved}</p>
-        {draft.provenance.fallbackUsed && <p className="fallback-notice" role="status">{text.fallback}</p>}
+        {draft.provenance.fallbackUsed && (
+          <div className="fallback-panel">
+            <p className="fallback-notice" role="status">{text.fallback}</p>
+            <button className="secondary-button" type="button" onClick={generate}>
+              {text.retryPersonalised}
+            </button>
+          </div>
+        )}
         <div className="journey-title-row">
           {editingTitle ? (
             <div className="journey-title-editor">

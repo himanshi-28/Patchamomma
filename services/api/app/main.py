@@ -62,6 +62,14 @@ from .persistence import (
     build_firestore_repositories,
 )
 from .profile import LearningWishProfile, SavedProfileResponse
+from .profile_extraction import (
+    GoogleProfileExtractor,
+    ProfileExtractionRequest,
+    ProfileExtractionResult,
+    ProfileExtractionUnavailable,
+    ProfileExtractor,
+    deterministic_profile_extraction,
+)
 from .quotas import (
     FirestoreQuotaCounterStore,
     InMemoryQuotaCounterStore,
@@ -85,6 +93,7 @@ def create_app(
     profile_repository: ProfileRepository | None = None,
     journey_repository: JourneyRepository | None = None,
     recommendation_repository: RecommendationRepository | None = None,
+    profile_extractor: ProfileExtractor | None = None,
 ) -> FastAPI:
     resolved_settings = settings or Settings()
     api = FastAPI(
@@ -120,6 +129,36 @@ def create_app(
     api.state.journey_repository = journey_repository
     api.state.recommendation_repository = recommendation_repository
     api.state.integration_call_counts = {"ai": 0, "paid": 0}
+    gemini_configured = (
+        resolved_settings.journey_adapter_mode == "gemini_adk"
+        and resolved_settings.paid_api_calls_enabled
+        and (
+            resolved_settings.gemini_backend == "vertex_ai"
+            or resolved_settings.gemini_api_key is not None
+        )
+    )
+    gemini_client_options = (
+        {
+            "vertex_project": resolved_settings.firebase_project_id,
+            "vertex_location": resolved_settings.gemini_location,
+        }
+        if resolved_settings.gemini_backend == "vertex_ai"
+        else {
+            "api_key": (
+                resolved_settings.gemini_api_key.get_secret_value()
+                if resolved_settings.gemini_api_key is not None
+                else None
+            )
+        }
+    )
+    configured_profile_extractor = profile_extractor
+    if configured_profile_extractor is None and gemini_configured:
+        configured_profile_extractor = GoogleProfileExtractor(
+            model=resolved_settings.gemini_model,
+            timeout_seconds=resolved_settings.profile_extraction_timeout_seconds,
+            **gemini_client_options,
+        )
+    api.state.profile_extractor = configured_profile_extractor
     configured_analytics = analytics_service
     configured_task_verifier = task_token_verifier
     if configured_analytics is None and resolved_settings.app_env != "production":
@@ -167,15 +206,10 @@ def create_app(
     api.state.cost_control_reader = configured_cost_controls
     api.state.quota_service = configured_quota_service
     configured_journey_workflow = journey_workflow
-    if (
-        configured_journey_workflow is None
-        and resolved_settings.journey_adapter_mode == "gemini_adk"
-        and resolved_settings.paid_api_calls_enabled
-        and resolved_settings.gemini_api_key is not None
-    ):
+    if configured_journey_workflow is None and gemini_configured:
         configured_journey_workflow = GoogleAdkJourneyWorkflow(
-            api_key=resolved_settings.gemini_api_key.get_secret_value(),
-            model=resolved_settings.gemini_model,
+            model=resolved_settings.journey_gemini_model,
+            **gemini_client_options,
         )
     api.state.journey_workflow = configured_journey_workflow
 
@@ -362,6 +396,41 @@ def create_app(
         )
         return SavedProfileResponse(profile=profile)
 
+    @api.post("/api/v1/profile/extractions", response_model=ProfileExtractionResult)
+    async def extract_profile(
+        extraction_request: ProfileExtractionRequest,
+        user: Annotated[AuthenticatedUser, Depends(require_user)],
+    ) -> ProfileExtractionResult:
+        require_operational_identity(user)
+        reserve_general_request(user)
+        extractor = api.state.profile_extractor
+        if extractor is None:
+            return deterministic_profile_extraction(extraction_request, source="deterministic")
+
+        if resolved_settings.app_env == "production":
+            try:
+                controls = api.state.cost_control_reader.read()
+            except CostControlStateUnavailable:
+                return deterministic_profile_extraction(extraction_request)
+            if controls.gemini_project_daily_allowance == 0:
+                return deterministic_profile_extraction(extraction_request)
+            try:
+                api.state.quota_service.reserve_gemini_workflow(
+                    user.uid,
+                    project_daily_allowance=controls.gemini_project_daily_allowance,
+                    subject_rolling_allowance=controls.gemini_project_daily_allowance,
+                )
+            except (QuotaExceeded, QuotaStoreUnavailable):
+                return deterministic_profile_extraction(extraction_request)
+
+        api.state.integration_call_counts["ai"] += 1
+        if resolved_settings.paid_api_calls_enabled:
+            api.state.integration_call_counts["paid"] += 1
+        try:
+            return await extractor.extract(extraction_request)
+        except ProfileExtractionUnavailable:
+            return deterministic_profile_extraction(extraction_request)
+
     @api.post("/api/v1/journeys", response_model=JourneyDocument)
     async def create_journey(
         request: JourneyCreateRequest,
@@ -408,6 +477,7 @@ def create_app(
                 api.state.quota_service.reserve_gemini_workflow(
                     user.uid,
                     project_daily_allowance=project_daily_allowance,
+                    subject_rolling_allowance=project_daily_allowance,
                 )
             except QuotaExceeded as error:
                 raise HTTPException(

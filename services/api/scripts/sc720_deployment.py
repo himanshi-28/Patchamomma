@@ -20,11 +20,14 @@ PROJECT_ID = "patchamomma-2026-505415"
 PROJECT_NUMBER = "859217028205"
 REGION = "asia-south1"
 SERVICE_NAME = "sakhicircle-api"
+PRIMARY_HOSTING_SITE_ID = "sakhi-circle"
 FIREBASE_APP_ID = "1:859217028205:web:eaf322c7cc7555721e0b64"
 CLOUD_RUN_URL = f"https://{SERVICE_NAME}-{PROJECT_NUMBER}.{REGION}.run.app"
 LIVE_HOSTING_ORIGINS = (
     f"https://{PROJECT_ID}.web.app",
     f"https://{PROJECT_ID}.firebaseapp.com",
+    f"https://{PRIMARY_HOSTING_SITE_ID}.web.app",
+    f"https://{PRIMARY_HOSTING_SITE_ID}.firebaseapp.com",
 )
 API_ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_TEMPLATE = API_ROOT / "cloud-run.service.yaml.tmpl"

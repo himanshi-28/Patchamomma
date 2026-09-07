@@ -9,9 +9,13 @@ class Settings(BaseSettings):
     demo_mode: bool = False
     adapter_mode: Literal["deterministic", "firebase_emulator", "production"] = "deterministic"
     journey_adapter_mode: Literal["deterministic", "gemini_adk"] = "deterministic"
-    journey_attempt_timeout_seconds: float = Field(default=10, gt=0, le=10)
+    journey_attempt_timeout_seconds: float = Field(default=180, gt=0, le=180)
+    profile_extraction_timeout_seconds: float = Field(default=10, gt=0, le=10)
     paid_api_calls_enabled: bool = False
     gemini_model: str = "gemini-3.7-flash"
+    journey_gemini_model: str = "gemini-2.5-flash"
+    gemini_backend: Literal["developer_api", "vertex_ai"] = "developer_api"
+    gemini_location: str = "global"
     gemini_api_key: SecretStr | None = None
     firebase_project_id: str | None = None
     firebase_app_id: str | None = None
@@ -53,6 +57,6 @@ class Settings(BaseSettings):
         if self.app_env == "production" and self.journey_adapter_mode == "gemini_adk":
             if not self.paid_api_calls_enabled:
                 raise ValueError("Gemini journeys require SAKHI_PAID_API_CALLS_ENABLED=true")
-            if self.gemini_api_key is None:
+            if self.gemini_backend == "developer_api" and self.gemini_api_key is None:
                 raise ValueError("SAKHI_GEMINI_API_KEY is required for Gemini journeys")
         return self

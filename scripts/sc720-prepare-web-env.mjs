@@ -7,6 +7,7 @@ export const PROJECT_ID = "patchamomma-2026-505415";
 export const APP_ID = "1:859217028205:web:eaf322c7cc7555721e0b64";
 export const API_BASE_URL =
   "https://sakhicircle-api-859217028205.asia-south1.run.app";
+export const PRIMARY_HOSTING_SITE_ID = "sakhi-circle";
 export const ENV_FIELD_NAMES = Object.freeze([
   "VITE_DEMO_MODE",
   "VITE_ADAPTER_MODE",
@@ -19,7 +20,8 @@ export const ENV_FIELD_NAMES = Object.freeze([
 ]);
 
 const SDK_AUTH_DOMAIN = `${PROJECT_ID}.firebaseapp.com`;
-const HOSTING_AUTH_DOMAIN = `${PROJECT_ID}.web.app`;
+const LEGACY_HOSTING_AUTH_DOMAIN = `${PROJECT_ID}.web.app`;
+const HOSTING_AUTH_DOMAIN = `${PRIMARY_HOSTING_SITE_ID}.web.app`;
 const FIREBASE_TOOLS_VERSION = "15.28.1";
 const DEFAULT_TARGET_PATH = fileURLToPath(
   new URL("../apps/web/.env.production.local", import.meta.url),
@@ -126,11 +128,22 @@ async function writeEnvironmentFile(targetPath, environment) {
     throw new Error("Production environment file could not be read.");
   }
   if (existing !== environment) {
-    const legacyAuthLine = `VITE_FIREBASE_AUTH_DOMAIN=${SDK_AUTH_DOMAIN}`;
     const hostingAuthLine = `VITE_FIREBASE_AUTH_DOMAIN=${HOSTING_AUTH_DOMAIN}`;
-    const migratedEnvironment = existing.replace(legacyAuthLine, hostingAuthLine);
-    const legacyLineCount = existing.split(legacyAuthLine).length - 1;
-    if (legacyLineCount !== 1 || migratedEnvironment !== environment) {
+    const legacyAuthLines = [
+      `VITE_FIREBASE_AUTH_DOMAIN=${SDK_AUTH_DOMAIN}`,
+      `VITE_FIREBASE_AUTH_DOMAIN=${LEGACY_HOSTING_AUTH_DOMAIN}`,
+    ];
+    const matchingLegacyLines = legacyAuthLines.filter(
+      (line) => existing.split(line).length - 1 === 1,
+    );
+    if (matchingLegacyLines.length !== 1) {
+      throw new Error("Refusing to overwrite different production configuration.");
+    }
+    const migratedEnvironment = existing.replace(
+      matchingLegacyLines[0],
+      hostingAuthLine,
+    );
+    if (migratedEnvironment !== environment) {
       throw new Error("Refusing to overwrite different production configuration.");
     }
     try {

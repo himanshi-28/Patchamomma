@@ -71,7 +71,7 @@ describe("SakhiCircle app shell", () => {
     expect(screen.getByText("A friendly place to learn, teach, and belong.")).toBeVisible();
     expect(screen.getByText("Sign in securely. No password needed.")).toBeVisible();
     expect(screen.getByRole("img", { name: "Sakhi, your SakhiCircle guide" })).toBeVisible();
-    const guide = screen.getByRole("button", { name: "Hi, let me help you" });
+    const guide = screen.getByRole("button", { name: "Hi, how may I help you?" });
     expect(guide).toBeVisible();
     expect(screen.queryByText("She made space for everyone else. This space is hers.")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Email address")).toBeVisible();
