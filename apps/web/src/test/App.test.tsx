@@ -204,6 +204,9 @@ describe("SakhiCircle app shell", () => {
     expect(screen.getByRole("link", { name: "आज" })).toBeVisible();
     expect(screen.getByRole("link", { name: "मेरा सर्कल" })).toBeVisible();
     expect(screen.getByRole("link", { name: "मेंटर्स" })).toBeVisible();
+    expect(screen.getByRole("tablist", { name: "आज के दृश्य" })).toBeVisible();
+    expect(screen.getByRole("tab", { name: "आज" })).toBeVisible();
+    expect(screen.getByRole("tab", { name: "मेरी योजना" })).toBeVisible();
   });
 
   it("announces a language change and focuses the translated active screen without losing learner words", async () => {
@@ -244,7 +247,19 @@ describe("SakhiCircle app shell", () => {
     );
     await user.click(screen.getByRole("button", { name: "Continue as Meera" }));
 
+    const todayViews = screen.getByRole("tablist", { name: "Today views" });
+    expect(todayViews).toBeVisible();
+    expect(screen.getByRole("tab", { name: "Today" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "My Plan" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Your plan is ready for today" })).toBeVisible();
+
+    await user.click(screen.getByRole("tab", { name: "My Plan" }));
+
     expect(await screen.findByRole("heading", { name: "Your four-week plan is saved" })).toBeVisible();
+    expect(screen.getByRole("tab", { name: "My Plan" })).toHaveAttribute("aria-selected", "true");
+    await user.click(screen.getByRole("link", { name: "My Circle" }));
+    await user.click(screen.getByRole("link", { name: "Today" }));
+    expect(screen.getByRole("heading", { name: "Your four-week plan is saved" })).toBeVisible();
     expect(create).not.toHaveBeenCalled();
   });
 });

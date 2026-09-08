@@ -158,6 +158,30 @@ describe("SC-410 journey flow", () => {
     expect(readConfirmedJourneyCache()?.title.en).toBe("My watercolour month");
   });
 
+  it("reports the confirmed plan to the app shell after saving", async () => {
+    const user = userEvent.setup();
+    const draft = makeDraft();
+    const saved = { ...draft, status: "confirmed" as const };
+    const onConfirmed = vi.fn();
+
+    render(
+      <JourneyFlow
+        locale="en"
+        gateway={{
+          create: vi.fn().mockResolvedValue(draft),
+          confirm: vi.fn().mockResolvedValue(saved),
+        }}
+        onConfirmed={onConfirmed}
+      />,
+    );
+
+    await screen.findByRole("heading", { name: "Your plan is ready" });
+    await user.click(screen.getByRole("button", { name: "Review my four-week plan" }));
+    await user.click(screen.getByRole("button", { name: "Confirm and save my plan" }));
+
+    expect(onConfirmed).toHaveBeenCalledWith(saved);
+  });
+
   it("rejects by clearing the draft from memory without persisting", async () => {
     const user = userEvent.setup();
     const confirm = vi.fn();
