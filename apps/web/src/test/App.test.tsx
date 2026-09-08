@@ -85,9 +85,9 @@ describe("SakhiCircle app shell", () => {
     expect(screen.getByText("What would you like help with?")).toBeVisible();
     expect(screen.getByRole("button", { name: "Signing in" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Finding a hobby" })).toBeVisible();
-    expect(screen.getByRole("button", { name: "Using voice" })).toBeVisible();
-    await user.click(screen.getByRole("button", { name: "Using voice" }));
-    expect(screen.getByRole("status")).toHaveTextContent("Every voice step also has a text option.");
+    expect(screen.queryByRole("button", { name: "Using voice" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Reviewing my details" }));
+    expect(screen.getByRole("status")).toHaveTextContent("Nothing is saved until you confirm it.");
   });
 
   it("shows synthetic access only in demo mode", () => {
@@ -295,7 +295,7 @@ describe("requested Olive Cream UI contract", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Your next chapter starts here" })).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Choose my first hobby" }));
     expect(screen.getByRole("heading", { level: 1, name: "Share your learning wish" })).toBeVisible();
-    expect(screen.getByRole("button", { name: "Start speaking" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Start speaking" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("Your learning wish")).toBeVisible();
   });
 
@@ -313,5 +313,18 @@ describe("requested Olive Cream UI contract", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Learn from lived experience" })).toBeVisible();
     expect(screen.getByRole("button", { name: "What makes a verified mentor?" })).toBeVisible();
     expect(screen.queryByText("Anjali Sharma")).not.toBeInTheDocument();
+  });
+
+  it("opens the synthetic activity centre from the existing Mentors destination in demo mode", async () => {
+    const user = userEvent.setup();
+    render(<App demoMode />);
+
+    await user.click(screen.getByRole("button", { name: "Continue as Meera" }));
+    await user.click(screen.getByRole("button", { name: "Choose my first hobby" }));
+    await user.click(screen.getByRole("link", { name: "Mentors" }));
+
+    expect(screen.getByRole("heading", { level: 1, name: "Activities near you" })).toBeVisible();
+    expect(screen.getAllByRole("article")).toHaveLength(6);
+    expect(screen.getByRole("button", { name: "Join Kathak: Begin with rhythm" })).toBeVisible();
   });
 });
