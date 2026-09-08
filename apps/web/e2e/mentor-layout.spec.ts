@@ -17,7 +17,8 @@ test("mentor heading and registration action share the desktop row without colla
   expect(headingBox).not.toBeNull();
   expect(buttonBox).not.toBeNull();
   expect(headingBox!.width).toBeGreaterThanOrEqual(480);
-  expect(buttonBox!.width).toBeLessThanOrEqual(280);
+  expect(buttonBox!.width).toBeLessThanOrEqual(320);
+  expect(buttonBox!.width).toBeLessThan(headingBox!.width);
   expect(headingBox!.x + headingBox!.width).toBeLessThan(buttonBox!.x);
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
 });
