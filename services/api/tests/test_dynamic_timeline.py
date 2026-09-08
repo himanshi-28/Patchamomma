@@ -5,7 +5,6 @@ from fastapi.testclient import TestClient
 from app.config import Settings
 from app.main import create_app
 
-
 AUTH_HEADERS = {"Authorization": "Bearer demo-learner-token"}
 PROFILE = {
     "hobby": "Watercolour painting",
