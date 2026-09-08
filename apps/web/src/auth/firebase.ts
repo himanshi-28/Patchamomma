@@ -117,6 +117,16 @@ export function createFirebaseAuthGateway(config: AuthRuntimeConfig): AuthGatewa
       void configuredResources()
         .then(async ({ auth }) => {
           const { getRedirectResult, isSignInWithEmailLink, onAuthStateChanged, signInWithEmailLink } = await import("firebase/auth");
+          if (!active) return;
+          unsubscribe = onAuthStateChanged(
+            auth,
+            (user) => listener(user ? {
+              uid: user.uid,
+              displayName: user.displayName || "SakhiCircle member",
+              synthetic: false,
+            } : null),
+            (error) => onError?.(error),
+          );
           if (isSignInWithEmailLink(auth, window.location.href)) {
             const pendingEmail = window.localStorage.getItem("sakhicircle-email-for-sign-in");
             if (!pendingEmail) {
@@ -129,16 +139,6 @@ export function createFirebaseAuthGateway(config: AuthRuntimeConfig): AuthGatewa
             }
           }
           await getRedirectResult(auth);
-          if (!active) return;
-          unsubscribe = onAuthStateChanged(
-            auth,
-            (user) => listener(user ? {
-              uid: user.uid,
-              displayName: user.displayName || "SakhiCircle member",
-              synthetic: false,
-            } : null),
-            (error) => onError?.(error),
-          );
         })
         .catch((error: unknown) => onError?.(
           error instanceof Error ? error : new Error("Firebase sign-in failed."),
