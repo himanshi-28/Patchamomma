@@ -1134,7 +1134,7 @@ code {
   }
 
   .app-main {
-    padding: 12px 16px 16px;
+    padding: 8px 16px 16px;
   }
 
   .main-toolbar {
@@ -1146,7 +1146,9 @@ code {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     width: 100%;
-    margin-bottom: 16px;
+    min-height: 48px;
+    margin-bottom: 4px;
+    padding: 0;
   }
 
   .today-tabs button {
