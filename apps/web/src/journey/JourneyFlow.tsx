@@ -20,6 +20,7 @@ interface JourneyFlowProps {
   recommendationGateway?: RecommendationGateway;
   matchingConsent?: boolean;
   initialJourney?: JourneyDraft | null;
+  onConfirmed?: (journey: JourneyDraft) => void;
 }
 
 const englishWeekWord = (weeks: number) => ({ 2: "two", 4: "four", 6: "six", 8: "eight" })[weeks] ?? String(weeks);
@@ -121,6 +122,7 @@ export function JourneyFlow({
   recommendationGateway,
   matchingConsent = false,
   initialJourney = null,
+  onConfirmed,
 }: JourneyFlowProps) {
   const restoredJourney = initialJourney?.status === "confirmed" ? initialJourney : null;
   const gatewayRef = useRef(gateway);
@@ -226,6 +228,7 @@ export function JourneyFlow({
       setDraft(saved);
       setOfflineCacheState(cacheConfirmedJourney(saved) ? "available" : "unavailable");
       setState("confirmed");
+      onConfirmed?.(saved);
     } catch {
       setSaveError(true);
       setState("review");

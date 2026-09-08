@@ -72,6 +72,12 @@ textarea:focus-visible {
   outline-offset: 3px;
 }
 
+[data-screen-heading]:focus {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
 button:disabled {
   cursor: not-allowed;
   opacity: 0.56;
@@ -760,8 +766,47 @@ p {
   animation: content-enter var(--duration-medium) var(--ease-out) both;
 }
 
+.today-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 56px;
+  margin-bottom: 24px;
+  padding: 4px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.today-tabs button {
+  min-height: 48px;
+  padding: 8px 20px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--color-muted);
+  background: transparent;
+  font-weight: 800;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out);
+}
+
+.today-tabs button:hover {
+  color: var(--color-ink);
+  background: var(--color-surface-soft);
+}
+
+.today-tabs button:active {
+  transform: translateY(1px);
+}
+
+.today-tabs button[aria-selected="true"] {
+  color: var(--color-ink);
+  background: var(--color-surface-strong);
+}
+
 .today-view,
-.empty-view {
+.empty-view,
+.plan-today-summary {
   animation: content-enter var(--duration-medium) var(--ease-out) both;
 }
 
@@ -803,6 +848,37 @@ p {
 .next-action {
   flex: none;
   max-width: 280px;
+}
+
+.plan-today-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 24px;
+  padding: 32px;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.plan-today-summary > svg {
+  width: 44px;
+  height: 44px;
+  color: var(--color-primary-hover);
+}
+
+.plan-today-summary h1 {
+  margin-bottom: 8px;
+  font-size: 2.125rem;
+}
+
+.plan-today-summary p:not(.section-label) {
+  max-width: 58ch;
+  margin-bottom: 10px;
+  color: var(--color-muted);
+}
+
+.plan-today-summary strong {
+  display: block;
 }
 
 .how-it-works {
@@ -902,6 +978,10 @@ p {
 }
 
 .empty-view .secondary-button {
+  width: auto;
+}
+
+.plan-empty-view .primary-button {
   width: auto;
 }
 
@@ -1054,12 +1134,26 @@ code {
   }
 
   .app-main {
-    padding: 12px 16px 16px;
+    padding: 8px 16px 16px;
   }
 
   .main-toolbar {
     min-height: 48px;
     margin-bottom: 12px;
+  }
+
+  .today-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    min-height: 48px;
+    margin-bottom: 4px;
+    padding: 0;
+  }
+
+  .today-tabs button {
+    width: 100%;
+    padding-inline: 12px;
   }
 
   .language-button {
@@ -1081,6 +1175,22 @@ code {
     width: 100%;
     max-width: none;
     margin-top: 16px;
+  }
+
+  .plan-today-summary {
+    display: flex;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 16px;
+    padding: 24px 20px;
+  }
+
+  .plan-today-summary h1 {
+    font-size: 2rem;
+  }
+
+  .plan-today-summary .primary-button {
+    width: 100%;
   }
 
   .how-it-works {

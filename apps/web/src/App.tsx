@@ -35,6 +35,7 @@ import { DemoActivityCenter } from "./activities/DemoActivityCenter";
 
 type Locale = "en" | "hi";
 type Destination = "today" | "circle" | "mentors";
+type TodayView = "today" | "plan";
 
 interface AppProps {
   demoMode?: boolean;
@@ -53,6 +54,14 @@ interface Copy {
   today: string;
   circle: string;
   mentors: string;
+  todayViewsLabel: string;
+  myPlan: string;
+  savedPlanTodayHeading: string;
+  savedPlanTodayBody: string;
+  openMyPlan: string;
+  emptyPlanHeading: string;
+  emptyPlanBody: string;
+  createMyPlan: string;
   help: string;
   languageAction: string;
   languageChanged: string;
@@ -107,6 +116,14 @@ const copy: Record<Locale, Copy> = {
     today: "Today",
     circle: "My Circle",
     mentors: "Mentors",
+    todayViewsLabel: "Today views",
+    myPlan: "My Plan",
+    savedPlanTodayHeading: "Your plan is ready for today",
+    savedPlanTodayBody: "Your confirmed learning plan is saved and ready whenever you want to continue.",
+    openMyPlan: "Open My Plan",
+    emptyPlanHeading: "Your plan will live here",
+    emptyPlanBody: "Create and confirm a learning plan first. Only a plan you explicitly save will appear here.",
+    createMyPlan: "Create my plan",
     help: "Need help?",
     languageAction: "हिंदी में देखें",
     languageChanged: "Language changed to English. Your draft is unchanged.",
@@ -165,6 +182,14 @@ const copy: Record<Locale, Copy> = {
     today: "आज",
     circle: "मेरा सर्कल",
     mentors: "मेंटर्स",
+    todayViewsLabel: "आज के दृश्य",
+    myPlan: "मेरी योजना",
+    savedPlanTodayHeading: "आज के लिए आपकी योजना तैयार है",
+    savedPlanTodayBody: "आपकी पुष्टि की हुई सीखने की योजना सेव है और जब चाहें आगे बढ़ने के लिए तैयार है।",
+    openMyPlan: "मेरी योजना खोलें",
+    emptyPlanHeading: "आपकी योजना यहाँ दिखाई देगी",
+    emptyPlanBody: "पहले सीखने की योजना बनाएँ और पुष्टि करें। केवल आपकी स्पष्ट अनुमति से सेव की हुई योजना यहाँ दिखाई देगी।",
+    createMyPlan: "मेरी योजना बनाएँ",
     help: "मदद चाहिए?",
     languageAction: "View in English",
     languageChanged: "भाषा हिंदी हुई। आपका ड्राफ़्ट नहीं बदला।",
@@ -240,6 +265,7 @@ export function App({
   const [locale, setLocale] = useState<Locale>("en");
   const [languageAnnouncement, setLanguageAnnouncement] = useState("");
   const [destination, setDestination] = useState<Destination>("today");
+  const [todayView, setTodayView] = useState<TodayView>("today");
   const [helpOpen, setHelpOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<AuthStatus | null>(null);
@@ -282,6 +308,7 @@ export function App({
       setMatchingConsent(false);
       setPlanWeeks(4);
       setRestoredJourney(null);
+      setTodayView("today");
       return;
     }
     const cachedJourney = readConfirmedJourneyCache();
@@ -335,8 +362,11 @@ export function App({
   useLayoutEffect(() => {
     if (!localeFocusPending.current) return;
     localeFocusPending.current = false;
-    document.querySelector<HTMLElement>("#main-content [data-screen-heading]")?.focus();
-  }, [locale]);
+    const activeHeading = destination === "today"
+      ? document.querySelector<HTMLElement>(`#today-panel-${todayView} [data-screen-heading]`)
+      : document.querySelector<HTMLElement>("#main-content [data-screen-heading]");
+    activeHeading?.focus();
+  }, [destination, locale, todayView]);
 
   const toggleLocale = () => {
     const nextLocale = locale === "en" ? "hi" : "en";
@@ -575,71 +605,161 @@ export function App({
             </aside>
           )}
 
-          {destination === "today" && onboardingStarted && journeyStarted && journeyGateway && (
-            <JourneyFlow
-              locale={locale}
-              gateway={journeyGateway}
-              planWeeks={planWeeks}
-              recommendationGateway={recommendationGateway}
-              matchingConsent={matchingConsent}
-              initialJourney={restoredJourney}
-            />
-          )}
-
-          {destination === "today" && onboardingStarted && !journeyStarted && (
-            <OnboardingFlow
-              locale={locale}
-              transcriptAdapter={voiceAdapter}
-              profileGateway={profileBoundary}
-              extractionGateway={profileExtractionGateway}
-              onConfirmed={journeyGateway ? (profile) => {
-                setMatchingConsent(profile.matchingConsent);
-                setPlanWeeks(profile.planWeeks);
-                setJourneyStarted(true);
-              } : undefined}
-            />
-          )}
-
-          {destination === "today" && !onboardingStarted && (
-            <section className="today-view" aria-labelledby="today-heading">
-              <div className="next-step-block">
-                <div>
-                  <p className="section-label">{locale === "en" ? "Your next step" : "आपका अगला कदम"}</p>
-                  <h1 id="today-heading" data-screen-heading tabIndex={-1}>{text.startHeading}</h1>
-                  <p>{text.startBody}</p>
-                </div>
-                <button className="primary-button next-action" type="button" onClick={() => setOnboardingStarted(true)}>
-                  <Sparkles aria-hidden="true" />
-                  {text.startAction}
-                </button>
+          {destination === "today" && (
+            <>
+              <div className="today-tabs" role="tablist" aria-label={text.todayViewsLabel}>
+                {(["today", "plan"] as const).map((view) => {
+                  const selected = todayView === view;
+                  const label = view === "today" ? text.today : text.myPlan;
+                  return (
+                    <button
+                      id={`today-tab-${view}`}
+                      key={view}
+                      type="button"
+                      role="tab"
+                      aria-selected={selected}
+                      aria-controls={`today-panel-${view}`}
+                      tabIndex={selected ? 0 : -1}
+                      onClick={() => setTodayView(view)}
+                      onKeyDown={(event) => {
+                        if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+                        event.preventDefault();
+                        const nextView: TodayView = event.key === "ArrowRight" || event.key === "End" ? "plan" : "today";
+                        setTodayView(nextView);
+                        window.requestAnimationFrame(() => document.getElementById(`today-tab-${nextView}`)?.focus());
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
               </div>
 
-              <div className="how-it-works" aria-label={locale === "en" ? "How SakhiCircle works" : "SakhiCircle कैसे काम करता है"}>
-                {isNarrowViewport ? (
-                  <button
-                    className="steps-toggle"
-                    type="button"
-                    aria-expanded={stepsOpen}
-                    aria-controls={stepsId}
-                    onClick={() => setStepsOpen((open) => !open)}
-                  >
-                    <span className="steps-toggle-title">{locale === "en" ? "How SakhiCircle works" : "SakhiCircle कैसे काम करता है"}</span>
-                    <span className="section-note">{locale === "en" ? "Three simple steps" : "तीन आसान कदम"}</span>
-                    <ChevronDown aria-hidden="true" />
-                  </button>
+              <div
+                id="today-panel-today"
+                role="tabpanel"
+                aria-labelledby="today-tab-today"
+                hidden={todayView !== "today"}
+              >
+                {restoredJourney ? (
+                  <section className="plan-today-summary" aria-labelledby="today-heading">
+                    <BookOpenText aria-hidden="true" />
+                    <div>
+                      <p className="section-label">{locale === "en" ? "Saved learning plan" : "सेव की हुई सीखने की योजना"}</p>
+                      <h1 id="today-heading" data-screen-heading tabIndex={-1}>{text.savedPlanTodayHeading}</h1>
+                      <p>{text.savedPlanTodayBody}</p>
+                      <strong>{restoredJourney.title[locale]}</strong>
+                    </div>
+                    <button className="primary-button" type="button" onClick={() => setTodayView("plan")}>
+                      {text.openMyPlan}
+                    </button>
+                  </section>
                 ) : (
-                  <div className="section-heading-row">
-                    <h2>{locale === "en" ? "How SakhiCircle works" : "SakhiCircle कैसे काम करता है"}</h2>
-                    <span className="section-note">{locale === "en" ? "Three simple steps" : "तीन आसान कदम"}</span>
-                  </div>
+                  <>
+                    {onboardingStarted && journeyStarted && journeyGateway && (
+                      <JourneyFlow
+                        locale={locale}
+                        gateway={journeyGateway}
+                        planWeeks={planWeeks}
+                        recommendationGateway={recommendationGateway}
+                        matchingConsent={matchingConsent}
+                        onConfirmed={(journey) => {
+                          setRestoredJourney(journey);
+                          setPlanWeeks(journey.weeks.length);
+                          setTodayView("plan");
+                        }}
+                      />
+                    )}
+
+                    {onboardingStarted && !journeyStarted && (
+                      <OnboardingFlow
+                        locale={locale}
+                        transcriptAdapter={voiceAdapter}
+                        profileGateway={profileBoundary}
+                        extractionGateway={profileExtractionGateway}
+                        onConfirmed={journeyGateway ? (profile) => {
+                          setMatchingConsent(profile.matchingConsent);
+                          setPlanWeeks(profile.planWeeks);
+                          setJourneyStarted(true);
+                        } : undefined}
+                      />
+                    )}
+
+                    {!onboardingStarted && (
+                      <section className="today-view" aria-labelledby="today-heading">
+                        <div className="next-step-block">
+                          <div>
+                            <p className="section-label">{locale === "en" ? "Your next step" : "आपका अगला कदम"}</p>
+                            <h1 id="today-heading" data-screen-heading tabIndex={-1}>{text.startHeading}</h1>
+                            <p>{text.startBody}</p>
+                          </div>
+                          <button className="primary-button next-action" type="button" onClick={() => setOnboardingStarted(true)}>
+                            <Sparkles aria-hidden="true" />
+                            {text.startAction}
+                          </button>
+                        </div>
+
+                        <div className="how-it-works" aria-label={locale === "en" ? "How SakhiCircle works" : "SakhiCircle कैसे काम करता है"}>
+                          {isNarrowViewport ? (
+                            <button
+                              className="steps-toggle"
+                              type="button"
+                              aria-expanded={stepsOpen}
+                              aria-controls={stepsId}
+                              onClick={() => setStepsOpen((open) => !open)}
+                            >
+                              <span className="steps-toggle-title">{locale === "en" ? "How SakhiCircle works" : "SakhiCircle कैसे काम करता है"}</span>
+                              <span className="section-note">{locale === "en" ? "Three simple steps" : "तीन आसान कदम"}</span>
+                              <ChevronDown aria-hidden="true" />
+                            </button>
+                          ) : (
+                            <div className="section-heading-row">
+                              <h2>{locale === "en" ? "How SakhiCircle works" : "SakhiCircle कैसे काम करता है"}</h2>
+                              <span className="section-note">{locale === "en" ? "Three simple steps" : "तीन आसान कदम"}</span>
+                            </div>
+                          )}
+                          <ol id={stepsId} className={stepsOpen ? "steps-open" : undefined}>
+                            <li><span>1</span><div><strong>{locale === "en" ? "Share your wish" : "अपनी इच्छा बताएँ"}</strong><p>{locale === "en" ? "Type what you want to learn." : "जो सीखना चाहती हैं, लिखें।"}</p></div></li>
+                            <li><span>2</span><div><strong>{locale === "en" ? "Review your plan" : "अपनी योजना देखें"}</strong><p>{locale === "en" ? "Nothing is saved until you confirm it." : "आपकी पुष्टि से पहले कुछ भी सेव नहीं होगा।"}</p></div></li>
+                            <li><span>3</span><div><strong>{locale === "en" ? "Meet your people" : "अपने लोगों से मिलें"}</strong><p>{locale === "en" ? "See why each partner, circle, or mentor fits." : "जानें कि हर साथी, सर्कल या मेंटर आपके लिए सही क्यों है।"}</p></div></li>
+                          </ol>
+                        </div>
+                      </section>
+                    )}
+                  </>
                 )}
-                <ol id={stepsId} className={stepsOpen ? "steps-open" : undefined}>
-                  <li><span>1</span><div><strong>{locale === "en" ? "Share your wish" : "अपनी इच्छा बताएँ"}</strong><p>{locale === "en" ? "Type what you want to learn." : "जो सीखना चाहती हैं, लिखें।"}</p></div></li>
-                  <li><span>2</span><div><strong>{locale === "en" ? "Review your plan" : "अपनी योजना देखें"}</strong><p>{locale === "en" ? "Nothing is saved until you confirm it." : "आपकी पुष्टि से पहले कुछ भी सेव नहीं होगा।"}</p></div></li>
-                  <li><span>3</span><div><strong>{locale === "en" ? "Meet your people" : "अपने लोगों से मिलें"}</strong><p>{locale === "en" ? "See why each partner, circle, or mentor fits." : "जानें कि हर साथी, सर्कल या मेंटर आपके लिए सही क्यों है।"}</p></div></li>
-                </ol>
               </div>
-            </section>
+
+              <div
+                id="today-panel-plan"
+                role="tabpanel"
+                aria-labelledby="today-tab-plan"
+                hidden={todayView !== "plan"}
+              >
+                {restoredJourney && journeyGateway ? (
+                  <JourneyFlow
+                    locale={locale}
+                    gateway={journeyGateway}
+                    planWeeks={planWeeks}
+                    recommendationGateway={recommendationGateway}
+                    matchingConsent={matchingConsent}
+                    initialJourney={restoredJourney}
+                  />
+                ) : (
+                  <section className="empty-view plan-empty-view" aria-labelledby="plan-empty-heading">
+                    <BookOpenText aria-hidden="true" />
+                    <h1 id="plan-empty-heading" data-screen-heading tabIndex={-1}>{text.emptyPlanHeading}</h1>
+                    <p>{text.emptyPlanBody}</p>
+                    <button className="primary-button" type="button" onClick={() => {
+                      setTodayView("today");
+                      setOnboardingStarted(true);
+                    }}>
+                      {text.createMyPlan}
+                    </button>
+                  </section>
+                )}
+              </div>
+            </>
           )}
 
           {destination === "circle" && (
