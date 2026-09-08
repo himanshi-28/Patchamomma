@@ -2592,6 +2592,7 @@ code {
 }
 
 .mentor-register-trigger {
+  width: auto;
   flex: none;
   gap: 10px;
 }
