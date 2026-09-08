@@ -772,7 +772,7 @@ export function App({
           )}
 
           {destination === "mentors" && (
-            demoMode && onboardingStarted ? <DemoActivityCenter locale={locale} /> : <section className="empty-view" aria-labelledby="mentors-heading">
+            demoMode ? <DemoActivityCenter locale={locale} /> : <section className="empty-view" aria-labelledby="mentors-heading">
               <GraduationCap aria-hidden="true" />
               <h1 id="mentors-heading" data-screen-heading tabIndex={-1}>{text.mentorsHeading}</h1>
               <p>{text.mentorsBody}</p>
