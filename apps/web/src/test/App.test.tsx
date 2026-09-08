@@ -323,6 +323,8 @@ describe("requested Olive Cream UI contract", () => {
     await user.click(screen.getByRole("link", { name: "My Circle" }));
     expect(screen.getByRole("heading", { level: 1, name: "Your circle is ready when you are" })).toBeVisible();
     expect(screen.getByRole("button", { name: "How matching works" })).toBeVisible();
+    expect(screen.getAllByRole("article")).toHaveLength(6);
+    expect(screen.getByRole("button", { name: "Join Confident Driving Circle" })).toBeVisible();
 
     await user.click(screen.getByRole("link", { name: "Mentors" }));
     expect(screen.getByRole("heading", { level: 1, name: "Find a class that fits your week" })).toBeVisible();

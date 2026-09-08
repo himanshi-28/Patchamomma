@@ -179,6 +179,26 @@ test("explicit sign-out clears local user state and returns to sign-in", async (
   }))).toEqual({ draft: null, query: null });
 });
 
+test("demo members can browse and join purposeful activity circles", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Continue as Meera" }).click();
+  await page.getByRole("link", { name: "My Circle" }).click();
+
+  await expect(page.getByRole("heading", { name: "Your circle is ready when you are" })).toBeVisible();
+  await expect(page.getByRole("article")).toHaveCount(6);
+  await expect(page.getByRole("heading", { name: "Confident Driving Circle" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Home Cooking Exchange Circle" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Join Confident Driving Circle" }).click();
+  await expect(page.getByRole("status")).toContainText("You joined Confident Driving Circle");
+  await expect(page.getByRole("button", { name: "Joined Confident Driving Circle" })).toBeDisabled();
+
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(horizontalOverflow).toBeLessThanOrEqual(1);
+});
+
 test("every required sign-in action is visible without scrolling at 360 by 800", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 800 });
   await page.goto("/");

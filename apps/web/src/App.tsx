@@ -32,6 +32,7 @@ import {
 } from "./onboarding/runtime";
 import type { RecommendationGateway } from "./recommendation/runtime";
 import { DemoActivityCenter } from "./activities/DemoActivityCenter";
+import { DemoCircleDirectory } from "./circles/DemoCircleDirectory";
 
 type Locale = "en" | "hi";
 type Destination = "today" | "circle" | "mentors";
@@ -763,7 +764,7 @@ export function App({
           )}
 
           {destination === "circle" && (
-            <section className="empty-view" aria-labelledby="circle-heading">
+            demoMode ? <DemoCircleDirectory locale={locale} title={text.circleHeading} /> : <section className="empty-view" aria-labelledby="circle-heading">
               <UsersRound aria-hidden="true" />
               <h1 id="circle-heading" data-screen-heading tabIndex={-1}>{text.circleHeading}</h1>
               <p>{text.circleBody}</p>
