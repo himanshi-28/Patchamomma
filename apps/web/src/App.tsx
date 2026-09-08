@@ -764,21 +764,11 @@ export function App({
           )}
 
           {destination === "circle" && (
-            demoMode ? <DemoCircleDirectory locale={locale} title={text.circleHeading} /> : <section className="empty-view" aria-labelledby="circle-heading">
-              <UsersRound aria-hidden="true" />
-              <h1 id="circle-heading" data-screen-heading tabIndex={-1}>{text.circleHeading}</h1>
-              <p>{text.circleBody}</p>
-              <button className="secondary-button" type="button">{locale === "en" ? "How matching works" : "मैचिंग कैसे काम करती है"}</button>
-            </section>
+            <DemoCircleDirectory locale={locale} title={text.circleHeading} />
           )}
 
           {destination === "mentors" && (
-            demoMode ? <DemoActivityCenter locale={locale} /> : <section className="empty-view" aria-labelledby="mentors-heading">
-              <GraduationCap aria-hidden="true" />
-              <h1 id="mentors-heading" data-screen-heading tabIndex={-1}>{text.mentorsHeading}</h1>
-              <p>{text.mentorsBody}</p>
-              <button className="secondary-button" type="button">{locale === "en" ? "What makes a verified mentor?" : "सत्यापित मेंटर कौन होता है?"}</button>
-            </section>
+            <DemoActivityCenter locale={locale} />
           )}
         </main>
       </div>

@@ -345,4 +345,30 @@ describe("requested Olive Cream UI contract", () => {
     expect(screen.getAllByRole("article")).toHaveLength(6);
     expect(screen.getByRole("button", { name: "Book demo seat for Kathak: Begin with rhythm" })).toBeVisible();
   });
+
+  it("shows clearly labelled synthetic discovery to authenticated production sessions", async () => {
+    const user = userEvent.setup();
+    const authGateway: AuthGateway = {
+      observeSession(listener) {
+        listener({ uid: "live-member", displayName: "Leela Joshi", synthetic: false });
+        return () => undefined;
+      },
+      sendEmailLink: vi.fn(),
+      signInWithGoogle: vi.fn(),
+      signInDemo: vi.fn(),
+      signOut: vi.fn(),
+      getIdToken: vi.fn().mockResolvedValue("token"),
+      getAppCheckToken: vi.fn().mockResolvedValue("app-check"),
+    };
+
+    render(<App demoMode={false} authGateway={authGateway} />);
+
+    await user.click(screen.getByRole("link", { name: "My Circle" }));
+    expect(screen.getAllByText("Synthetic demo circle")).toHaveLength(6);
+    expect(screen.getByRole("button", { name: "Join Confident Driving Circle" })).toBeVisible();
+
+    await user.click(screen.getByRole("link", { name: "Mentors" }));
+    expect(screen.getAllByText("Synthetic demo class")).toHaveLength(6);
+    expect(screen.getByRole("button", { name: "Register as a mentor" })).toBeVisible();
+  });
 });
