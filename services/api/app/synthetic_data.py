@@ -65,6 +65,7 @@ class SyntheticLearnerRecord(SyntheticRecord):
     pace: AvailabilityTier
     learning_format: LearningFormat
     city_code: str | None = None
+    demo_pool_only: bool = False
 
 
 class SyntheticMentorRecord(SyntheticRecord):
@@ -136,6 +137,7 @@ HOBBY_CATALOG = (
     ("photography", "Photography", "फ़ोटोग्राफ़ी", ("phone photography",)),
     ("creative_writing", "Creative writing", "रचनात्मक लेखन", ("story writing",)),
     ("spoken_english", "Spoken English", "बोली जाने वाली अंग्रेज़ी", ("english speaking",)),
+    ("kathak", "Kathak", "कथक", ("kathak dance", "कथक नृत्य")),
 )
 
 
@@ -155,7 +157,12 @@ def _catalog_records() -> list[HobbyCatalogRecord]:
     ]
 
 
-def _matched_partner(candidate_id: str, display_name: str) -> SyntheticLearnerRecord:
+def _matched_partner(
+    candidate_id: str,
+    display_name: str,
+    *,
+    demo_pool_only: bool = False,
+) -> SyntheticLearnerRecord:
     return SyntheticLearnerRecord(
         candidate_id=candidate_id,
         display_name=display_name,
@@ -169,6 +176,7 @@ def _matched_partner(candidate_id: str, display_name: str) -> SyntheticLearnerRe
         pace="steady",
         learning_format="home_online_group",
         city_code="pune",
+        demo_pool_only=demo_pool_only,
     )
 
 
@@ -177,6 +185,11 @@ def _learners(seed: str) -> list[SyntheticLearnerRecord]:
         _matched_partner("syn_partner_0001", "Kavita Demo"),
         _matched_partner("syn_partner_0002", "Blocked Demo"),
         _matched_partner("syn_partner_0003", "Rejected Demo"),
+        _matched_partner("syn_partner_0004", "Anita Demo", demo_pool_only=True),
+        _matched_partner("syn_partner_0005", "Farah Demo", demo_pool_only=True),
+        _matched_partner("syn_partner_0006", "Jyoti Demo", demo_pool_only=True),
+        _matched_partner("syn_partner_0007", "Nandini Demo", demo_pool_only=True),
+        _matched_partner("syn_partner_0008", "Sunita Demo", demo_pool_only=True),
     ]
     hobby_ids = [entry[0] for entry in HOBBY_CATALOG]
     goals: tuple[GoalTag, ...] = (
@@ -188,7 +201,7 @@ def _learners(seed: str) -> list[SyntheticLearnerRecord]:
     )
     tiers: tuple[AvailabilityTier, ...] = ("gentle", "steady", "immersive")
     cities = ("pune", "jaipur", "lucknow", "indore", "mysuru")
-    for index in range(4, 250):
+    for index in range(9, 250):
         hobby_id = hobby_ids[(index - 1) % len(hobby_ids)]
         tier = tiers[_stable_index(seed, "learner-tier", index, len(tiers))]
         records.append(
@@ -238,8 +251,9 @@ def _mentors(seed: str) -> list[SyntheticMentorRecord]:
     tiers: tuple[AvailabilityTier, ...] = ("gentle", "steady", "immersive")
     records: list[SyntheticMentorRecord] = []
     for index in range(1, 41):
-        hobby_id = "watercolour" if index == 1 else hobby_ids[(index - 1) % len(hobby_ids)]
-        tier = "steady" if index == 1 else tiers[_stable_index(seed, "mentor-tier", index, 3)]
+        is_catalog_anchor = index <= len(hobby_ids)
+        hobby_id = hobby_ids[(index - 1) % len(hobby_ids)]
+        tier = "steady" if is_catalog_anchor else tiers[_stable_index(seed, "mentor-tier", index, 3)]
         records.append(
             SyntheticMentorRecord(
                 candidate_id=f"syn_mentor_{index:04d}",
@@ -249,12 +263,12 @@ def _mentors(seed: str) -> list[SyntheticMentorRecord]:
                 status="verified",
                 published=True,
                 taught_hobby_ids=(hobby_id,),
-                supported_goal_tags=("complete_small_project",) if index == 1 else (goals[index % len(goals)],),
-                taught_levels=(0, 1, 2) if index == 1 else (index % 3,),
-                supported_languages=("en", "hi") if index == 1 or index % 4 == 0 else (("hi",) if index % 2 == 0 else ("en",)),
+                supported_goal_tags=goals if is_catalog_anchor else (goals[index % len(goals)],),
+                taught_levels=(0, 1, 2) if is_catalog_anchor else (index % 3,),
+                supported_languages=("en", "hi") if is_catalog_anchor or index % 4 == 0 else (("hi",) if index % 2 == 0 else ("en",)),
                 availability_tier=tier,
                 pace=tier,
-                supported_formats=("home_online_group", "home_individual") if index == 1 else ("home_individual",),
+                supported_formats=("home_online_group", "home_individual", "in_person_group") if is_catalog_anchor else ("home_individual",),
                 primary_format="home_online_group" if index == 1 else "home_individual",
                 city_code="pune",
                 price_inr=0,
@@ -308,4 +322,3 @@ def generate_synthetic_dataset(
         activity=activity,
         relations=relations,
     )
-

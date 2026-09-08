@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { run } from "axe-core";
 import { describe, expect, it, vi } from "vitest";
@@ -8,16 +8,24 @@ import type { RecommendationResponse } from "./runtime";
 
 const response: RecommendationResponse = {
   contractVersion: "matching-v1.0.0",
-  recommendationType: "partner",
+  recommendationType: "mentor",
   source: "deterministic_synthetic",
   synthetic: true,
   status: "matched",
   scoreThreshold: 65,
   resultLimit: 3,
+  demoProfiles: [
+    { candidateId: "syn_partner_0001", displayName: "Kavita Demo", synthetic: true, hobby: { en: "Watercolour painting", hi: "वॉटरकलर पेंटिंग" } },
+    { candidateId: "syn_partner_0004", displayName: "Anita Demo", synthetic: true, hobby: { en: "Watercolour painting", hi: "वॉटरकलर पेंटिंग" } },
+    { candidateId: "syn_partner_0005", displayName: "Farah Demo", synthetic: true, hobby: { en: "Watercolour painting", hi: "वॉटरकलर पेंटिंग" } },
+    { candidateId: "syn_partner_0006", displayName: "Jyoti Demo", synthetic: true, hobby: { en: "Watercolour painting", hi: "वॉटरकलर पेंटिंग" } },
+    { candidateId: "syn_partner_0007", displayName: "Nandini Demo", synthetic: true, hobby: { en: "Watercolour painting", hi: "वॉटरकलर पेंटिंग" } },
+    { candidateId: "syn_partner_0008", displayName: "Sunita Demo", synthetic: true, hobby: { en: "Watercolour painting", hi: "वॉटरकलर पेंटिंग" } },
+  ],
   results: [{
-    candidateId: "syn_partner_0001",
-    candidateType: "partner",
-    displayName: "Kavita Demo",
+    candidateId: "syn_mentor_0001",
+    candidateType: "mentor",
+    displayName: "Leela Mentor Demo",
     synthetic: true,
     score: 100,
     scoreOutOf: 100,
@@ -49,29 +57,45 @@ describe("SC-510 recommendation flow", () => {
     );
 
     expect(find).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("button", { name: "Find my learning partner" }));
+    await user.click(screen.getByRole("button", { name: "Find my mentor" }));
 
-    const heading = await screen.findByRole("heading", { name: "Your demo learning partner" });
+    const heading = await screen.findByRole("heading", { name: "Your demo mentor" });
     expect(document.activeElement).toBe(heading);
     expect(find).toHaveBeenCalledTimes(1);
+    expect(find).toHaveBeenCalledWith("mentor");
     expect(screen.getByText("Demo match — synthetic profile")).toBeVisible();
     expect(screen.getByText("Match score: 100 out of 100")).toBeVisible();
-    expect(screen.getAllByRole("listitem")).toHaveLength(3);
+    expect(within(screen.getByRole("heading", { name: "Why this match fits" }).parentElement!).getAllByRole("listitem")).toHaveLength(3);
     const violations = (await run(rendered.container)).violations
       .filter((violation) => ["serious", "critical"].includes(violation.impact ?? ""));
     expect(violations).toEqual([]);
+  });
+
+  it("shows six clearly synthetic same-interest demo profiles without changing ranked results", async () => {
+    const user = userEvent.setup();
+    const find = vi.fn().mockResolvedValue(response);
+    render(<RecommendationFlow locale="en" matchingConsent gateway={{ find }} />);
+
+    await user.click(screen.getByRole("button", { name: /^Find my/ }));
+
+    expect(await screen.findByRole("heading", { name: "6 demo profiles share your interest" })).toBeVisible();
+    expect(screen.getByRole("list", { name: "Demo profiles interested in Watercolour painting" }).children).toHaveLength(6);
+    expect(screen.getByText("Kavita Demo")).toBeVisible();
+    expect(screen.getByText("Sunita Demo")).toBeVisible();
+    expect(screen.getByText("These profiles are fictional and are shown only to demonstrate matching.")).toBeVisible();
+    expect(response.results).toHaveLength(1);
   });
 
   it("switches to reviewed Hindi copy without refetching or reranking", async () => {
     const user = userEvent.setup();
     const find = vi.fn().mockResolvedValue(response);
     const rendered = render(<RecommendationFlow locale="en" matchingConsent gateway={{ find }} />);
-    await user.click(screen.getByRole("button", { name: "Find my learning partner" }));
-    await screen.findByText("Kavita Demo");
+    await user.click(screen.getByRole("button", { name: "Find my mentor" }));
+    await screen.findByText("Leela Mentor Demo");
 
     rendered.rerender(<RecommendationFlow locale="hi" matchingConsent gateway={{ find }} />);
 
-    expect(screen.getByRole("heading", { name: "आपकी डेमो सीखने की साथी" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "आपकी डेमो मेंटर" })).toBeVisible();
     expect(screen.getByText("मैच स्कोर: 100 में से 100")).toBeVisible();
     expect(screen.getByText("आप दोनों सीखने के लिए हिंदी पसंद करती हैं।")).toBeVisible();
     expect(find).toHaveBeenCalledTimes(1);
@@ -85,11 +109,11 @@ describe("SC-510 recommendation flow", () => {
     expect(screen.getByRole("button", { name: "Review matching permission" })).toBeVisible();
     expect(find).not.toHaveBeenCalled();
     rendered.rerender(<RecommendationFlow locale="en" matchingConsent gateway={{ find }} />);
-    await user.click(screen.getByRole("button", { name: "Find my learning partner" }));
-    await screen.findByText("Kavita Demo");
+    await user.click(screen.getByRole("button", { name: "Find my mentor" }));
+    await screen.findByText("Leela Mentor Demo");
     rendered.rerender(<RecommendationFlow locale="en" matchingConsent={false} gateway={{ find }} />);
 
-    expect(screen.queryByText("Kavita Demo")).not.toBeInTheDocument();
+    expect(screen.queryByText("Leela Mentor Demo")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Review matching permission" })).toBeVisible();
     expect(find).toHaveBeenCalledTimes(1);
   });
@@ -101,7 +125,7 @@ describe("SC-510 recommendation flow", () => {
       .mockResolvedValueOnce({ ...response, status: "no_matches", results: [], emptyReason: "no_eligible_candidate" });
     render(<RecommendationFlow locale="en" matchingConsent gateway={{ find }} />);
 
-    await user.click(screen.getByRole("button", { name: "Find my learning partner" }));
+    await user.click(screen.getByRole("button", { name: "Find my mentor" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Your saved plan is still ready");
     await user.click(screen.getByRole("button", { name: "Try matching again" }));
 

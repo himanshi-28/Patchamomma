@@ -27,7 +27,7 @@ def test_dataset_has_the_exact_checkpoint_counts_dates_and_deferred_circles() ->
 
     assert len(dataset.learners) == 250
     assert len(dataset.mentors) == 40
-    assert len(dataset.hobbies) == 15
+    assert len(dataset.hobbies) == 16
     assert len(dataset.circles) == 25
     assert len(dataset.activity) == 90
     assert [record.occurred_on for record in dataset.activity] == [
@@ -35,6 +35,24 @@ def test_dataset_has_the_exact_checkpoint_counts_dates_and_deferred_circles() ->
     ]
     assert all(circle.future and circle.starts_on >= date(2026, 9, 1) for circle in dataset.circles)
     assert all(circle.deferred_from_matching for circle in dataset.circles)
+
+
+def test_dataset_includes_a_verified_bilingual_kathak_mentor() -> None:
+    dataset = generate_synthetic_dataset()
+    kathak = next(hobby for hobby in dataset.hobbies if hobby.hobby_id == "kathak")
+    mentors = [
+        mentor for mentor in dataset.mentors if kathak.hobby_id in mentor.taught_hobby_ids
+    ]
+
+    assert kathak.label.en == "Kathak"
+    assert mentors
+    assert any(
+        mentor.status == "verified"
+        and mentor.published
+        and mentor.listing_consent
+        and {"en", "hi"}.issubset(mentor.supported_languages)
+        for mentor in mentors
+    )
 
 
 def test_every_record_is_synthetic_versioned_and_contains_no_forbidden_field() -> None:
@@ -71,4 +89,3 @@ def test_every_record_is_synthetic_versioned_and_contains_no_forbidden_field() -
     assert all("Demo" in learner.display_name for learner in dataset.learners)
     assert all("Demo" in mentor.display_name for mentor in dataset.mentors)
     assert {relation.kind for relation in dataset.relations} == {"block", "rejection"}
-

@@ -14,12 +14,16 @@ type FlowState = "idle" | "loading" | "matched" | "no_matches" | "error";
 
 const copy = {
   en: {
-    inviteTitle: "Your plan is saved. Meet a learning partner when you are ready.",
+    inviteTitle: "Your plan is saved. Meet a mentor when you are ready.",
     inviteBody: "We will check compatible synthetic profiles using only your reviewed matching details.",
-    find: "Find my learning partner",
+    find: "Find my mentor",
     loading: "Checking compatible demo profiles…",
-    resultTitle: "Your demo learning partner",
+    resultTitle: "Your demo mentor",
     synthetic: "Demo match — synthetic profile",
+    demoPoolTitle: (count: number) => `${count} demo profiles share your interest`,
+    demoPoolLabel: (hobby: string) => `Demo profiles interested in ${hobby}`,
+    demoProfile: "Demo profile",
+    demoPoolNote: "These profiles are fictional and are shown only to demonstrate matching.",
     score: (score: number) => `Match score: ${score} out of 100`,
     why: "Why this match fits",
     explanation: "This score explains compatibility; it is not a guarantee, popularity measure, or assessment of either woman.",
@@ -40,17 +44,21 @@ const copy = {
     error: "We couldn't check matches right now. Your saved plan is still ready; check the connection and retry.",
     retry: "Try matching again",
     consentTitle: "Your learning plan is ready",
-    consentBody: "Matching permission is off, so SakhiCircle will not request or show partner suggestions.",
+    consentBody: "Matching permission is off, so SakhiCircle will not request or show mentor suggestions.",
     reviewConsent: "Review matching permission",
     consentDetail: "Matching uses only your reviewed hobby, language, practice capacity, learning format, and city when in-person learning is selected. It never uses accessibility needs to rank people.",
   },
   hi: {
-    inviteTitle: "आपकी योजना सेव है। तैयार होने पर सीखने की साथी से मिलें।",
+    inviteTitle: "आपकी योजना सेव है। तैयार होने पर मेंटर से मिलें।",
     inviteBody: "हम केवल आपकी जाँची हुई मैचिंग जानकारी से अनुकूल काल्पनिक प्रोफ़ाइल देखेंगे।",
-    find: "मेरी सीखने की साथी खोजें",
+    find: "मेरी मेंटर खोजें",
     loading: "अनुकूल डेमो प्रोफ़ाइल देखी जा रही हैं…",
-    resultTitle: "आपकी डेमो सीखने की साथी",
+    resultTitle: "आपकी डेमो मेंटर",
     synthetic: "डेमो मैच — काल्पनिक प्रोफ़ाइल",
+    demoPoolTitle: (count: number) => `आपकी रुचि वाली ${count} डेमो प्रोफ़ाइल`,
+    demoPoolLabel: (hobby: string) => `${hobby} में रुचि रखने वाली डेमो प्रोफ़ाइल`,
+    demoProfile: "डेमो प्रोफ़ाइल",
+    demoPoolNote: "ये प्रोफ़ाइल काल्पनिक हैं और केवल मैचिंग दिखाने के लिए हैं।",
     score: (score: number) => `मैच स्कोर: 100 में से ${score}`,
     why: "यह साथी क्यों उपयुक्त है",
     explanation: "यह स्कोर केवल अनुकूलता समझाता है; यह गारंटी, लोकप्रियता या किसी महिला का मूल्यांकन नहीं है।",
@@ -71,7 +79,7 @@ const copy = {
     error: "अभी मैच नहीं देख सके। आपकी सेव की हुई योजना तैयार है; कनेक्शन जाँचकर फिर कोशिश करें।",
     retry: "मैचिंग फिर आज़माएँ",
     consentTitle: "आपकी सीखने की योजना तैयार है",
-    consentBody: "मैचिंग की अनुमति बंद है, इसलिए SakhiCircle साथी के सुझाव नहीं माँगेगा या दिखाएगा।",
+    consentBody: "मैचिंग की अनुमति बंद है, इसलिए SakhiCircle मेंटर के सुझाव नहीं माँगेगा या दिखाएगा।",
     reviewConsent: "मैचिंग की अनुमति जाँचें",
     consentDetail: "मैचिंग में केवल आपका जाँचा हुआ शौक, भाषा, अभ्यास क्षमता, सीखने का तरीका और आमने-सामने सीखने पर शहर इस्तेमाल होता है। सुविधा की ज़रूरतों से कभी लोगों की रैंकिंग नहीं होती।",
   },
@@ -105,7 +113,7 @@ export function RecommendationFlow({ locale, matchingConsent, gateway }: Recomme
     setState("loading");
     setResponse(null);
     try {
-      const found = await gatewayRef.current.find("partner");
+      const found = await gatewayRef.current.find("mentor");
       setResponse(found);
       setState(found.status === "matched" && found.results.length ? "matched" : "no_matches");
     } catch {
@@ -167,6 +175,8 @@ export function RecommendationFlow({ locale, matchingConsent, gateway }: Recomme
 
   if (state === "matched" && response?.results[0]) {
     const result = response.results[0];
+    const demoProfiles = response.demoProfiles ?? [];
+    const demoHobby = demoProfiles[0]?.hobby[locale] ?? result.hobby[locale];
     return (
       <section className="recommendation-flow recommendation-result" aria-labelledby="recommendation-result-title">
         <header className="recommendation-result-heading">
@@ -176,6 +186,31 @@ export function RecommendationFlow({ locale, matchingConsent, gateway }: Recomme
           <p>{result.hobby[locale]}</p>
           <p className="match-score">{text.score(result.score)}</p>
         </header>
+        {demoProfiles.length > 0 && (
+          <section className="demo-profile-pool" aria-labelledby="demo-profile-pool-title">
+            <div className="demo-profile-pool-heading">
+              <div>
+                <h3 id="demo-profile-pool-title">{text.demoPoolTitle(demoProfiles.length)}</h3>
+                <p>{demoHobby}</p>
+              </div>
+              <span>{text.demoProfile}</span>
+            </div>
+            <ul aria-label={text.demoPoolLabel(demoHobby)}>
+              {demoProfiles.map((profile) => (
+                <li key={profile.candidateId}>
+                  <span className="demo-profile-avatar" aria-hidden="true">
+                    {profile.displayName.charAt(0).toLocaleUpperCase(locale === "hi" ? "hi-IN" : "en-IN")}
+                  </span>
+                  <span>
+                    <strong>{profile.displayName}</strong>
+                    <small>{profile.hobby[locale]} · {text.demoProfile}</small>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="demo-profile-note"><ShieldCheck aria-hidden="true" />{text.demoPoolNote}</p>
+          </section>
+        )}
         <div className="recommendation-reasons">
           <h3>{text.why}</h3>
           <ol>
@@ -217,4 +252,3 @@ export function RecommendationFlow({ locale, matchingConsent, gateway }: Recomme
     </section>
   );
 }
-

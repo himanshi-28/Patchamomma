@@ -102,7 +102,7 @@ def test_catalog_document_is_versioned_bounded_and_idempotent() -> None:
     assert dataset["datasetVersion"] == DATASET_VERSION
     assert len(dataset["learners"]) == 250
     assert len(dataset["mentors"]) == 40
-    assert len(dataset["hobbies"]) == 15
+    assert len(dataset["hobbies"]) == 16
     assert len(dataset["circles"]) == 25
     assert len(dataset["activity"]) == 90
     assert len(json.dumps(document, default=str).encode("utf-8")) < 900_000

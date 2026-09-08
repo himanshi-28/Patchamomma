@@ -85,7 +85,7 @@ def test_missing_catalog_builds_the_locked_versioned_dataset() -> None:
     assert document["dataset"]["datasetVersion"] == DATASET_VERSION
     assert len(document["dataset"]["learners"]) == 250
     assert len(document["dataset"]["mentors"]) == 40
-    assert len(document["dataset"]["hobbies"]) == 15
+    assert len(document["dataset"]["hobbies"]) == 16
     assert len(document["dataset"]["circles"]) == 25
     assert len(document["dataset"]["activity"]) == 90
 

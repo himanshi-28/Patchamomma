@@ -36,6 +36,13 @@ export interface RecommendationResult {
   factorBreakdown: FactorBreakdown[];
 }
 
+export interface DemoProfile {
+  candidateId: string;
+  displayName: string;
+  synthetic: true;
+  hobby: LocalizedText;
+}
+
 export interface RecommendationResponse {
   contractVersion: "matching-v1.0.0";
   recommendationType: RecommendationType;
@@ -45,6 +52,7 @@ export interface RecommendationResponse {
   scoreThreshold: 65;
   resultLimit: 3;
   results: RecommendationResult[];
+  demoProfiles: DemoProfile[];
   emptyReason?: "no_eligible_candidate" | "hobby_not_in_catalog";
 }
 
@@ -77,4 +85,3 @@ export function createRecommendationApiGateway({
     },
   };
 }
-

@@ -11,6 +11,7 @@ from app.persistence import (
     OperationalDataUnavailable,
 )
 from app.profile import LearningWishProfile
+from app.quotas import InMemoryQuotaCounterStore, QuotaService
 
 AUTH_HEADERS = {"Authorization": "Bearer demo-learner-token"}
 PROFILE = {
@@ -87,6 +88,13 @@ def test_explicit_get_returns_one_minimal_explainable_synthetic_partner_without_
     assert payload["scoreThreshold"] == 65
     assert payload["resultLimit"] == 3
     assert len(payload["results"]) == 1
+    assert len(payload["demoProfiles"]) == 6
+    assert {profile["hobby"]["en"] for profile in payload["demoProfiles"]} == {
+        "Watercolour painting"
+    }
+    assert {profile["candidateId"] for profile in payload["demoProfiles"]}.isdisjoint(
+        {"syn_partner_0002", "syn_partner_0003", "syn_requester_0001"}
+    )
     result = payload["results"][0]
     assert result["candidateId"] == "syn_partner_0001"
     assert result["candidateType"] == "partner"
@@ -115,6 +123,33 @@ def test_explicit_get_returns_one_minimal_explainable_synthetic_partner_without_
         "seed",
     }
     assert forbidden.isdisjoint(result)
+    assert all(forbidden.isdisjoint(profile) for profile in payload["demoProfiles"])
+
+
+def test_kathak_profile_returns_an_explainable_synthetic_mentor() -> None:
+    client, _ = client_with_profile(
+        {
+            **PROFILE,
+            "hobby": "Kathak",
+            "goal": "Build a regular practice routine",
+            "language": "English and Hindi",
+            "format": "At home · individual",
+            "city": "",
+        }
+    )
+
+    response = client.get(
+        "/api/v1/recommendations?type=mentor",
+        headers=AUTH_HEADERS,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "matched"
+    assert payload["recommendationType"] == "mentor"
+    assert payload["results"][0]["candidateType"] == "mentor"
+    assert payload["results"][0]["hobby"] == {"en": "Kathak", "hi": "कथक"}
+    assert len(payload["results"][0]["reasons"]) == 3
 
 
 def test_query_boundary_rejects_unsupported_type_and_unapproved_inputs() -> None:
@@ -173,6 +208,10 @@ def test_unknown_hobby_no_match_and_unavailable_states_reveal_no_candidate_detai
 
 
 def test_production_recommendations_fail_closed_without_using_the_synthetic_adapter() -> None:
+    class AvailableCostControls:
+        def read(self):
+            return type("Controls", (), {"maintenance_mode": False})()
+
     class UnavailableRecommendationRepository:
         def get_dataset(self):
             raise OperationalDataUnavailable("operational data unavailable")
@@ -194,6 +233,8 @@ def test_production_recommendations_fail_closed_without_using_the_synthetic_adap
         profile_repository=profile_repository,
         journey_repository=InMemoryJourneyRepository(),
         recommendation_repository=recommendation_repository,
+        cost_control_reader=AvailableCostControls(),
+        quota_service=QuotaService(InMemoryQuotaCounterStore()),
     )
     client = TestClient(app)
     headers = {

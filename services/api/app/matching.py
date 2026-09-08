@@ -20,6 +20,7 @@ from .synthetic_data import (
 MATCHING_CONTRACT_VERSION = "matching-v1.0.0"
 SCORE_THRESHOLD = 65
 RESULT_LIMIT = 3
+DEMO_PROFILE_LIMIT = 6
 RecommendationType = Literal["partner", "mentor"]
 FactorName = Literal[
     "hobbyGoalFit",
@@ -101,6 +102,13 @@ class RecommendationResult(ApiModel):
         return self
 
 
+class DemoProfile(ApiModel):
+    candidate_id: str
+    display_name: str
+    synthetic: Literal[True] = True
+    hobby: LocalizedText
+
+
 class RecommendationResponse(ApiModel):
     contract_version: Literal["matching-v1.0.0"] = MATCHING_CONTRACT_VERSION
     recommendation_type: RecommendationType
@@ -110,6 +118,7 @@ class RecommendationResponse(ApiModel):
     score_threshold: Literal[65] = SCORE_THRESHOLD
     result_limit: Literal[3] = RESULT_LIMIT
     results: list[RecommendationResult] = Field(max_length=3)
+    demo_profiles: list[DemoProfile] = Field(default_factory=list, max_length=6)
     empty_reason: Literal["no_eligible_candidate", "hobby_not_in_catalog"] | None = None
 
 
@@ -407,7 +416,7 @@ def generate_recommendations(
         list(dataset.learners) if recommendation_type == "partner" else list(dataset.mentors)
     )
     scored = [
-        score_candidate(learner, candidate, dataset.hobbies)
+        (score_candidate(learner, candidate, dataset.hobbies), candidate)
         for candidate in candidates
         if candidate_passes_hard_filters(
             learner=learner,
@@ -417,7 +426,11 @@ def generate_recommendations(
             relations=dataset.relations,
         )
     ]
-    eligible = [result for result in scored if result.score >= SCORE_THRESHOLD]
+    eligible = [
+        (result, candidate)
+        for result, candidate in scored
+        if result.score >= SCORE_THRESHOLD
+    ]
 
     def ranking_key(result: RecommendationResult) -> tuple[int, int, int, int, str]:
         factors = {factor.factor: factor.points for factor in result.factor_breakdown}
@@ -429,11 +442,50 @@ def generate_recommendations(
             result.candidate_id,
         )
 
-    results = sorted(eligible, key=ranking_key)[:RESULT_LIMIT]
+    ranked_results = sorted(
+        (
+            result
+            for result, candidate in eligible
+            if not (
+                isinstance(candidate, SyntheticLearnerRecord)
+                and candidate.demo_pool_only
+            )
+        ),
+        key=ranking_key,
+    )
+    results = ranked_results[:RESULT_LIMIT]
+    hobby = next(item.label for item in dataset.hobbies if item.hobby_id == learner.hobby_id)
+    demo_candidates = sorted(
+        (
+            candidate
+            for candidate in dataset.learners
+            if candidate.synthetic
+            and candidate.dataset_version == dataset.dataset_version
+            and candidate.candidate_id != requester_candidate_id
+            and candidate.active
+            and candidate.matching_consent
+            and candidate.hobby_id == learner.hobby_id
+            and not _is_excluded_by_relation(
+                requester_candidate_id,
+                candidate.candidate_id,
+                dataset.relations,
+            )
+        ),
+        key=lambda candidate: candidate.candidate_id,
+    )[:DEMO_PROFILE_LIMIT]
+    demo_profiles = [
+        DemoProfile(
+            candidate_id=candidate.candidate_id,
+            display_name=candidate.display_name,
+            hobby=hobby,
+        )
+        for candidate in demo_candidates
+    ]
     return RecommendationResponse(
         recommendation_type=recommendation_type,
         status="matched" if results else "no_matches",
         results=results,
+        demo_profiles=demo_profiles,
         empty_reason=None if results else "no_eligible_candidate",
     )
 
