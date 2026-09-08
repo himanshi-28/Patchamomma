@@ -5,6 +5,7 @@ export interface LearningWish {
   experience: string;
   goal: string;
   availability: string;
+  planWeeks: number;
   language: string;
   accessibility: string;
   format: string;
@@ -223,6 +224,7 @@ export function extractLearningWish(transcript: string, locale: Locale): Learnin
           ? `${availabilityChoice.minutes} मिनट · सप्ताह में ${availabilityChoice.days} दिन`
           : `${availabilityChoice.minutes} minutes · ${availabilityChoice.days} days a week`)
       : "",
+    planWeeks: 4,
     language: hindiPlan ? (hindi ? "हिंदी" : "Hindi") : "",
     accessibility: largerText
       ? (hindi
@@ -277,7 +279,12 @@ export function createProfileExtractionApiGateway({
       };
       return {
         ...result,
-        fields: { ...result.fields, planConsent: false, matchingConsent: false },
+        fields: {
+          ...result.fields,
+          planWeeks: result.fields.planWeeks ?? 4,
+          planConsent: false,
+          matchingConsent: false,
+        },
       };
     },
   };

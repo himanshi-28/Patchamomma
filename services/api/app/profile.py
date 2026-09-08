@@ -45,6 +45,11 @@ class LearningWishProfile(BaseModel):
     experience: Experience
     goal: str = Field(default="", max_length=240)
     availability: Availability
+    plan_weeks: Literal[2, 4, 6, 8] = Field(
+        default=4,
+        alias="planWeeks",
+        exclude_if=lambda value: value == 4,
+    )
     language: PlanLanguage
     accessibility: Accessibility
     format: LearningFormat

@@ -63,6 +63,30 @@ describe("confirmed journey offline cache", () => {
     expect(readConfirmedJourneyCache()).toEqual(journey);
   });
 
+  it("stores variable-length journeys only under the extended schema", () => {
+    const fourWeekJourney = makeConfirmedJourney();
+    const sixWeekJourney = {
+      ...fourWeekJourney,
+      schemaVersion: "1.1.0" as const,
+      weeks: [
+        ...fourWeekJourney.weeks,
+        ...fourWeekJourney.weeks.slice(0, 2).map((week, index) => ({
+          ...week,
+          weekNumber: index + 5,
+          activities: week.activities.map((activity, dayIndex) => ({
+            ...activity,
+            activityId: `day-${index * 7 + dayIndex + 29}`,
+            dayNumber: index * 7 + dayIndex + 29,
+          })),
+        })),
+      ],
+    } satisfies JourneyDraft;
+
+    expect(cacheConfirmedJourney(sixWeekJourney)).toBe(true);
+    expect(readConfirmedJourneyCache()?.schemaVersion).toBe("1.1.0");
+    expect(cacheConfirmedJourney({ ...sixWeekJourney, schemaVersion: "1.0.0" })).toBe(false);
+  });
+
   it("rejects drafts and strips fields outside the journey contract", () => {
     const draft = { ...makeConfirmedJourney(), status: "draft" as const };
     expect(cacheConfirmedJourney(draft)).toBe(false);
