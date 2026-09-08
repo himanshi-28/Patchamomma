@@ -8,7 +8,7 @@ import type { JourneyDraft } from "./runtime";
 
 const bilingual = (en: string, hi: string) => ({ en, hi });
 
-function makeDraft(fallbackUsed = false): JourneyDraft {
+function makeDraft(fallbackUsed = false, weekCount = 4): JourneyDraft {
   const startsOn = new Date("2026-08-26T00:00:00Z");
   return {
     schemaVersion: "1.0.0",
@@ -30,7 +30,7 @@ function makeDraft(fallbackUsed = false): JourneyDraft {
       contractVersion: "safety-accessibility-v1",
       passedChecks: ["schema", "schedule", "accessibility", "safety", "localization"],
     },
-    weeks: Array.from({ length: 4 }, (_, weekIndex) => ({
+    weeks: Array.from({ length: weekCount }, (_, weekIndex) => ({
       weekNumber: weekIndex + 1,
       theme: bilingual(`Week ${weekIndex + 1}`, `सप्ताह ${weekIndex + 1}`),
       outcome: bilingual("Build confidence steadily.", "धीरे-धीरे आत्मविश्वास बढ़ाएँ।"),
@@ -61,13 +61,49 @@ function makeDraft(fallbackUsed = false): JourneyDraft {
 }
 
 describe("SC-410 journey flow", () => {
+  it("shows plan creation before the ready screen and review", async () => {
+    const user = userEvent.setup();
+    const draft = makeDraft();
+    let finishCreation: ((created: JourneyDraft) => void) | undefined;
+    const create = vi.fn().mockReturnValue(new Promise<JourneyDraft>((resolve) => {
+      finishCreation = resolve;
+    }));
+
+    render(<JourneyFlow locale="en" gateway={{ create, confirm: vi.fn() }} />);
+
+    expect(screen.getByText("Creating your reviewed four-week plan…")).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "Your plan is ready" })).not.toBeInTheDocument();
+    finishCreation?.(draft);
+
+    expect(await screen.findByRole("heading", { name: "Your plan is ready" })).toBeVisible();
+    expect(screen.queryByRole("heading", { name: draft.title.en })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Review my four-week plan" }));
+    expect(screen.getByRole("heading", { name: draft.title.en })).toBeVisible();
+  });
+
+  it("uses the learner's selected timeline throughout creation and review", async () => {
+    const user = userEvent.setup();
+    const draft = makeDraft(false, 6);
+    const create = vi.fn().mockResolvedValue(draft);
+
+    render(<JourneyFlow locale="en" planWeeks={6} gateway={{ create, confirm: vi.fn() }} />);
+
+    expect(screen.getByText("Creating your reviewed six-week plan…")).toBeVisible();
+    expect(await screen.findByText("Your reviewed details were accepted and your six-week plan has been created.")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Review my six-week plan" }));
+    expect(screen.getByText("Review all six weeks. You can change the date, plan title, time, steps, accessible alternative, and reflection before saving.")).toBeVisible();
+  });
+
   it("generates an unsaved draft and has no serious accessibility violations", async () => {
+    const user = userEvent.setup();
     const draft = makeDraft();
     const create = vi.fn().mockResolvedValue(draft);
     const confirm = vi.fn();
     const rendered = render(<JourneyFlow locale="en" gateway={{ create, confirm }} />);
 
-    expect(await screen.findByRole("heading", { name: draft.title.en })).toBeVisible();
+    expect(await screen.findByRole("heading", { name: "Your plan is ready" })).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Review my four-week plan" }));
+    expect(screen.getByRole("heading", { name: draft.title.en })).toBeVisible();
     expect(create).toHaveBeenCalledTimes(1);
     expect(confirm).not.toHaveBeenCalled();
     expect(screen.getByText("Not saved yet")).toBeVisible();
@@ -77,13 +113,16 @@ describe("SC-410 journey flow", () => {
   });
 
   it("shows the same reviewed draft in Hindi without regenerating", async () => {
+    const user = userEvent.setup();
     const draft = makeDraft();
     const create = vi.fn().mockResolvedValue(draft);
     const rendered = render(<JourneyFlow locale="en" gateway={{ create, confirm: vi.fn() }} />);
-    await screen.findByRole("heading", { name: draft.title.en });
+    await screen.findByRole("heading", { name: "Your plan is ready" });
 
     rendered.rerender(<JourneyFlow locale="hi" gateway={{ create, confirm: vi.fn() }} />);
 
+    expect(screen.getByRole("heading", { name: "आपकी योजना तैयार है" })).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "मेरी चार-सप्ताह की योजना देखें" }));
     expect(screen.getByRole("heading", { name: draft.title.hi })).toBeVisible();
     expect(screen.getByText("अभी सेव नहीं हुई")).toBeVisible();
     expect(create).toHaveBeenCalledTimes(1);
@@ -94,7 +133,8 @@ describe("SC-410 journey flow", () => {
     const draft = makeDraft();
     const confirm = vi.fn().mockImplementation(async (edited: JourneyDraft) => ({ ...edited, status: "confirmed" as const }));
     render(<JourneyFlow locale="en" gateway={{ create: vi.fn().mockResolvedValue(draft), confirm }} />);
-    await screen.findByRole("heading", { name: draft.title.en });
+    await screen.findByRole("heading", { name: "Your plan is ready" });
+    await user.click(screen.getByRole("button", { name: "Review my four-week plan" }));
 
     await user.click(screen.getByRole("button", { name: "Edit plan title" }));
     await user.clear(screen.getByLabelText("Plan title"));
@@ -122,7 +162,9 @@ describe("SC-410 journey flow", () => {
     const user = userEvent.setup();
     const confirm = vi.fn();
     render(<JourneyFlow locale="en" gateway={{ create: vi.fn().mockResolvedValue(makeDraft()), confirm }} />);
-    await screen.findByText("Not saved yet");
+    await screen.findByRole("heading", { name: "Your plan is ready" });
+    await user.click(screen.getByRole("button", { name: "Review my four-week plan" }));
+    expect(screen.getByText("Not saved yet")).toBeVisible();
 
     await user.click(screen.getByRole("button", { name: "Reject this draft" }));
 
@@ -142,12 +184,16 @@ describe("SC-410 journey flow", () => {
       .mockResolvedValueOnce(personalised);
     render(<JourneyFlow locale="en" gateway={{ create, confirm: vi.fn() }} />);
 
+    await screen.findByRole("heading", { name: "Your plan is ready" });
+    await user.click(screen.getByRole("button", { name: "Review my four-week plan" }));
     expect(await screen.findByRole("status")).toHaveTextContent(
       "We couldn't create a personalised plan just now. Here is a reviewed four-week plan you can use or edit.",
     );
     await user.click(screen.getByRole("button", { name: "Try personalised plan again" }));
 
-    expect(await screen.findByRole("heading", { name: personalised.title.en })).toBeVisible();
+    expect(await screen.findByRole("heading", { name: "Your plan is ready" })).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Review my four-week plan" }));
+    expect(screen.getByRole("heading", { name: personalised.title.en })).toBeVisible();
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
     expect(create).toHaveBeenCalledTimes(2);
   });
