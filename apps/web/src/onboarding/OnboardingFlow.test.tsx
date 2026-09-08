@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { run } from "axe-core";
 import { describe, expect, it, vi } from "vitest";
@@ -7,7 +7,6 @@ import {
   createDeterministicProfileExtractionGateway,
   createDeterministicTranscriptAdapter,
   ProfileSaveError,
-  TranscriptCaptureError,
 } from "./runtime";
 
 const completeTranscript = "I want to restart watercolours and paint a greeting card. I can practise for 30 minutes, four days a week. I prefer Hindi, larger text, seated alternatives, and a small online group in Pune.";
@@ -39,36 +38,27 @@ describe("SC-310 onboarding flow", () => {
     expect(save).not.toHaveBeenCalled();
   });
 
-  it("uses the deterministic voice adapter and keeps the transcript editable", async () => {
+  it("keeps text input usable without exposing the out-of-scope voice control", async () => {
     const user = userEvent.setup();
-    render(<OnboardingFlow locale="en" transcriptAdapter={createDeterministicTranscriptAdapter()} profileGateway={{ save: vi.fn() }} />);
-
-    await user.click(screen.getByRole("button", { name: "Start speaking" }));
-
-    expect((await screen.findByLabelText("Your learning wish") as HTMLTextAreaElement).value).toContain("restart watercolours");
-    expect(screen.getByText(/SakhiCircle deterministic local voice/)).toBeVisible();
-  });
-
-  it("keeps typing available and focuses recovery when browser speech is unsupported", async () => {
-    const user = userEvent.setup();
+    const capture = vi.fn();
     render(
       <OnboardingFlow
         locale="en"
         transcriptAdapter={{
           providerName: "Browser speech recognition",
           providerPolicy: "The browser may process audio under its own terms.",
-          capture: vi.fn().mockRejectedValue(new TranscriptCaptureError("unsupported")),
+          capture,
         }}
         profileGateway={{ save: vi.fn() }}
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Start speaking" }));
-
-    const recovery = await screen.findByRole("alert");
-    expect(recovery).toHaveTextContent("Voice input is not supported in this browser");
-    expect(recovery).toHaveFocus();
-    expect(screen.getByLabelText("Your learning wish")).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "Start speaking" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Browser speech recognition")).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText("Your learning wish"), completeTranscript);
+    expect(screen.getByLabelText("Your learning wish")).toHaveValue(completeTranscript);
+    expect(capture).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Review my details" })).toBeEnabled();
   });
 
   it("requires transcript review and plan consent, then discards the transcript after save", async () => {
@@ -90,6 +80,30 @@ describe("SC-310 onboarding flow", () => {
     expect(save.mock.calls[0][0]).not.toHaveProperty("transcript");
     expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Your plan is ready to build" }));
     expect(screen.queryByDisplayValue(completeTranscript)).not.toBeInTheDocument();
+  });
+
+  it("hands confirmed details to plan generation before showing a ready state", async () => {
+    const user = userEvent.setup();
+    const save = vi.fn().mockResolvedValue(undefined);
+    const onConfirmed = vi.fn();
+    render(
+      <OnboardingFlow
+        locale="en"
+        transcriptAdapter={createDeterministicTranscriptAdapter()}
+        profileGateway={{ save }}
+        onConfirmed={onConfirmed}
+      />,
+    );
+
+    await user.type(screen.getByLabelText("Your learning wish"), completeTranscript);
+    await user.click(screen.getByRole("button", { name: "Review my details" }));
+    await user.click(screen.getByRole("button", { name: "My words look right" }));
+    await user.click(screen.getByRole("checkbox", { name: /I agree SakhiCircle may use/ }));
+    await user.click(screen.getByRole("button", { name: "Confirm and create my 4-week plan" }));
+
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(onConfirmed).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("heading", { name: "Your plan is ready to build" })).not.toBeInTheDocument();
   });
 
   it("preserves the reviewed draft and offers retry when saving fails", async () => {
@@ -134,6 +148,28 @@ describe("SC-310 onboarding flow", () => {
       experience: "",
       goal: "",
     }));
+  });
+
+  it("reveals missing-field guidance from the required star without persistent red warning text", async () => {
+    const user = userEvent.setup();
+    render(<OnboardingFlow locale="en" transcriptAdapter={createDeterministicTranscriptAdapter()} profileGateway={{ save: vi.fn() }} />);
+
+    await user.type(screen.getByLabelText("Your learning wish"), "I want to learn Kathak.");
+    await user.click(screen.getByRole("button", { name: "Review my details" }));
+
+    expect(screen.queryAllByText("Please add this")).toHaveLength(0);
+
+    const timeRequiredStar = screen.getByRole("button", {
+      name: "Time you can give: Required. Please add this",
+    });
+    await user.hover(timeRequiredStar);
+    expect(screen.getByRole("tooltip", { name: "Please add this" })).toBeVisible();
+
+    await user.unhover(timeRequiredStar);
+    expect(screen.queryByRole("tooltip", { name: "Please add this" })).not.toBeInTheDocument();
+
+    act(() => timeRequiredStar.focus());
+    expect(screen.getByRole("tooltip", { name: "Please add this" })).toBeVisible();
   });
 
   it("prefills the confirmation page from an arbitrary typed learning wish", async () => {

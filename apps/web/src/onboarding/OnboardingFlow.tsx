@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Mic, Pencil, RotateCcw, Sparkles } from "lucide-react";
+import { Check, ChevronDown, Pencil, RotateCcw, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   extractLearningWish,
@@ -10,8 +10,6 @@ import {
   type ProfileExtractionSource,
   ProfileSaveError,
   type ProfileSaveFailure,
-  TranscriptCaptureError,
-  type TranscriptCaptureFailure,
   type TranscriptAdapter,
 } from "./runtime";
 
@@ -58,11 +56,11 @@ const options: Partial<Record<FieldKey, Record<Locale, string[]>>> = {
 const copy = {
   en: {
     captureTitle: "Share your learning wish",
-    captureIntro: "Speak or type what you want to learn. Your experience and first goal are optional; we still need your time, comfort, and preferences.",
+    captureIntro: "Type what you want to learn. Your experience and first goal are optional; we still need your time, comfort, and preferences.",
     wishLabel: "Your learning wish",
-    typeStatus: "Typing works just as well.",
-    startSpeaking: "Start speaking",
-    listening: "Listening…",
+    timelineQuestion: "How many weeks can you give to learning?",
+    timelineReview: "Learning timeline",
+    timelineOption: (weeks: number) => `${weeks} weeks`,
     reviewAction: "Review my details",
     extracting: "Finding details…",
     extractionDisclosure: "When you review, SakhiCircle reads these words once to suggest form details. You still approve every field before anything is saved.",
@@ -70,13 +68,7 @@ const copy = {
     localSuggested: "SakhiCircle filled what it could from your words. Please check each detail.",
     extractionFallback: "AI suggestions were unavailable, so we filled what we could on this device. Please add any missing details.",
     suggestionStatus: "Suggestion status",
-    privacy: "SakhiCircle never records or stores raw audio. Nothing is saved until you confirm.",
-    voiceErrors: {
-      permission_denied: "Microphone access was not allowed. Continue by typing above.",
-      unsupported: "Voice input is not supported in this browser. Continue by typing above.",
-      no_speech: "We did not hear any words. Try speaking again or continue by typing above.",
-      unavailable: "Your browser's speech service could not start. Open this site in Chrome, allow microphone access, or continue by typing above.",
-    },
+    privacy: "Nothing is saved until you confirm.",
     reviewTitle: "Review before saving",
     nothingSaved: "Nothing has been saved",
     reviewIntro: "Check your words, then review each detail. You can change anything before confirming.",
@@ -99,15 +91,16 @@ const copy = {
     edit: "Edit",
     saveDetail: "Save detail",
     missing: "Please add this",
+    required: "Required",
     missingOptional: "Not provided (optional)",
     changed: "Updated from your words",
-    planConsent: "I agree SakhiCircle may use these reviewed details to create my private 4-week plan.",
+    planConsent: (weeks: number) => `I agree SakhiCircle may use these reviewed details to create my private ${weeks}-week plan.`,
     matchingConsent: "Also use hobby, language, schedule, format and city to suggest compatible people. You can change this later.",
     matchingHelp: "Optional. This is not needed to create your plan.",
     back: "Back to my words",
-    confirm: "Confirm and create my 4-week plan",
+    confirm: (weeks: number) => `Confirm and create my ${weeks}-week plan`,
     saving: "Saving reviewed details…",
-    storage: "After confirmation, only reviewed structured details are saved. The transcript is discarded; raw audio is never stored.",
+    storage: "After confirmation, only reviewed structured details are saved. Your typed draft is discarded.",
     saveError: "Your details were not saved. Check your connection and retry; your reviewed draft is still here.",
     saveErrors: {
       maintenance: "SakhiCircle is temporarily paused for maintenance. Your reviewed draft is safe here; try again after the service reopens.",
@@ -118,15 +111,15 @@ const copy = {
     retry: "Retry saving",
     successTitle: "Your plan is ready to build",
     successBody: "The reviewed details were accepted. The transcript was discarded.",
-    reviewPlan: "Review my four-week plan",
+    reviewPlan: (weeks: number) => `Review my ${weeks}-week plan`,
   },
   hi: {
     captureTitle: "अपनी सीखने की इच्छा बताएँ",
-    captureIntro: "जो सीखना चाहती हैं, बोलें या लिखें। आपका अनुभव और पहला लक्ष्य वैकल्पिक हैं; समय, सुविधा और पसंद बताना ज़रूरी है।",
+    captureIntro: "जो सीखना चाहती हैं, लिखें। आपका अनुभव और पहला लक्ष्य वैकल्पिक हैं; समय, सुविधा और पसंद बताना ज़रूरी है।",
     wishLabel: "आपकी सीखने की इच्छा",
-    typeStatus: "लिखकर बताना भी उतना ही आसान है।",
-    startSpeaking: "बोलना शुरू करें",
-    listening: "सुन रही हूँ…",
+    timelineQuestion: "आप सीखने के लिए कितने सप्ताह दे सकती हैं?",
+    timelineReview: "सीखने की अवधि",
+    timelineOption: (weeks: number) => `${weeks} सप्ताह`,
     reviewAction: "मेरे विवरण जाँचें",
     extracting: "विवरण ढूँढे जा रहे हैं…",
     extractionDisclosure: "जाँचने पर SakhiCircle इन शब्दों को एक बार पढ़कर फ़ॉर्म के विवरण सुझाता है। कुछ सेव होने से पहले हर विवरण आप ही स्वीकार करेंगी।",
@@ -134,13 +127,7 @@ const copy = {
     localSuggested: "SakhiCircle ने आपके शब्दों से जितने विवरण मिले, भर दिए हैं। हर विवरण जाँचें।",
     extractionFallback: "AI सुझाव उपलब्ध नहीं थे, इसलिए इस डिवाइस पर जितने विवरण मिले वे भर दिए गए हैं। बाकी विवरण जोड़ें।",
     suggestionStatus: "सुझाव की स्थिति",
-    privacy: "SakhiCircle कच्ची ऑडियो रिकॉर्ड या सेव नहीं करता। आपकी पुष्टि तक कुछ भी सेव नहीं होता।",
-    voiceErrors: {
-      permission_denied: "माइक्रोफ़ोन की अनुमति नहीं मिली। ऊपर लिखकर जारी रखें।",
-      unsupported: "यह ब्राउज़र वॉइस इनपुट का समर्थन नहीं करता। ऊपर लिखकर जारी रखें।",
-      no_speech: "कोई शब्द सुनाई नहीं दिए। फिर बोलें या ऊपर लिखकर जारी रखें।",
-      unavailable: "आपके ब्राउज़र की वॉइस सेवा शुरू नहीं हुई। साइट को Chrome में खोलें, माइक्रोफ़ोन की अनुमति दें, या ऊपर लिखकर जारी रखें।",
-    },
+    privacy: "आपकी पुष्टि तक कुछ भी सेव नहीं होता।",
     reviewTitle: "सेव करने से पहले जाँचें",
     nothingSaved: "अभी कुछ भी सेव नहीं हुआ है",
     reviewIntro: "अपने शब्द और हर विवरण जाँचें। पुष्टि से पहले आप कुछ भी बदल सकती हैं।",
@@ -163,15 +150,16 @@ const copy = {
     edit: "बदलें",
     saveDetail: "विवरण सेव करें",
     missing: "यह विवरण जोड़ें",
+    required: "ज़रूरी",
     missingOptional: "नहीं बताया (वैकल्पिक)",
     changed: "आपके शब्दों से बदला गया",
-    planConsent: "मैं सहमत हूँ कि SakhiCircle इन जाँचे हुए विवरणों से मेरी निजी 4-सप्ताह की योजना बनाए।",
+    planConsent: (weeks: number) => `मैं सहमत हूँ कि SakhiCircle इन जाँचे हुए विवरणों से मेरी निजी ${weeks}-सप्ताह की योजना बनाए।`,
     matchingConsent: "शौक, भाषा, समय, सीखने का तरीका और शहर इस्तेमाल करके उपयुक्त लोगों के सुझाव भी दें। इसे बाद में बदल सकती हैं।",
     matchingHelp: "वैकल्पिक। आपकी योजना बनाने के लिए यह ज़रूरी नहीं है।",
     back: "अपने शब्दों पर वापस जाएँ",
-    confirm: "पुष्टि करें और मेरी 4-सप्ताह की योजना बनाएँ",
+    confirm: (weeks: number) => `पुष्टि करें और मेरी ${weeks}-सप्ताह की योजना बनाएँ`,
     saving: "जाँचे हुए विवरण सेव हो रहे हैं…",
-    storage: "पुष्टि के बाद केवल जाँचे हुए विवरण सेव होंगे। ट्रांसक्रिप्ट हटा दी जाएगी और कच्ची ऑडियो कभी सेव नहीं होगी।",
+    storage: "पुष्टि के बाद केवल जाँचे हुए विवरण सेव होंगे। आपका लिखा हुआ ड्राफ़्ट हटा दिया जाएगा।",
     saveError: "आपके विवरण सेव नहीं हुए। कनेक्शन जाँचकर फिर कोशिश करें; आपका जाँचा हुआ ड्राफ़्ट यहीं है।",
     saveErrors: {
       maintenance: "SakhiCircle रखरखाव के लिए अस्थायी रूप से रुका है। आपका जाँचा हुआ ड्राफ़्ट यहीं सुरक्षित है; सेवा खुलने पर फिर कोशिश करें।",
@@ -182,17 +170,58 @@ const copy = {
     retry: "फिर सेव करें",
     successTitle: "आपकी योजना बनने के लिए तैयार है",
     successBody: "जाँचे हुए विवरण स्वीकार हुए। ट्रांसक्रिप्ट हटा दी गई।",
-    reviewPlan: "मेरी चार-सप्ताह की योजना देखें",
+    reviewPlan: (weeks: number) => `मेरी ${weeks}-सप्ताह की योजना देखें`,
   },
 } as const;
 
-export function OnboardingFlow({ locale, transcriptAdapter, profileGateway, extractionGateway, onConfirmed }: OnboardingFlowProps) {
+interface RequiredFieldMarkerProps {
+  fieldId: FieldKey;
+  fieldLabel: string;
+  requiredLabel: string;
+  missingGuidance: string;
+  missing: boolean;
+}
+
+function RequiredFieldMarker({ fieldId, fieldLabel, requiredLabel, missingGuidance, missing }: RequiredFieldMarkerProps) {
+  const [open, setOpen] = useState(false);
+  const tooltipId = `required-${fieldId}-hint`;
+  const guidance = missing ? missingGuidance : requiredLabel;
+  const accessibleLabel = `${fieldLabel}: ${requiredLabel}${missing ? `. ${missingGuidance}` : ""}`;
+
+  return (
+    <span className="required-marker-wrap">
+      <button
+        className={`required-marker ${missing ? "missing" : ""}`}
+        type="button"
+        aria-label={accessibleLabel}
+        aria-describedby={open ? tooltipId : undefined}
+        aria-expanded={open}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={(event) => {
+          if (document.activeElement !== event.currentTarget) setOpen(false);
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        onClick={() => setOpen(true)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            setOpen(false);
+            event.currentTarget.blur();
+          }
+        }}
+      >
+        <span aria-hidden="true">*</span>
+      </button>
+      {open && <span className="required-tooltip" id={tooltipId} role="tooltip">{guidance}</span>}
+    </span>
+  );
+}
+
+export function OnboardingFlow({ locale, profileGateway, extractionGateway, onConfirmed }: OnboardingFlowProps) {
   const [stage, setStage] = useState<Stage>("capture");
   const [transcript, setTranscript] = useState("");
   const [wish, setWish] = useState<LearningWish>(() => extractLearningWish("", locale));
   const [transcriptReviewed, setTranscriptReviewed] = useState(false);
-  const [capturing, setCapturing] = useState(false);
-  const [voiceError, setVoiceError] = useState<TranscriptCaptureFailure | null>(null);
   const [editing, setEditing] = useState<FieldKey | null>(null);
   const [pendingEdit, setPendingEdit] = useState("");
   const [activeGroup, setActiveGroup] = useState<GroupKey>("learning");
@@ -204,7 +233,6 @@ export function OnboardingFlow({ locale, transcriptAdapter, profileGateway, extr
   const [extractionFellBack, setExtractionFellBack] = useState(false);
   const reviewHeading = useRef<HTMLHeadingElement>(null);
   const successHeading = useRef<HTMLHeadingElement>(null);
-  const voiceErrorRef = useRef<HTMLParagraphElement>(null);
   const text = copy[locale];
   const detailsGateway = extractionGateway ?? createDeterministicProfileExtractionGateway();
 
@@ -212,10 +240,6 @@ export function OnboardingFlow({ locale, transcriptAdapter, profileGateway, extr
     if (stage === "review") reviewHeading.current?.focus();
     if (stage === "success") successHeading.current?.focus();
   }, [stage]);
-
-  useEffect(() => {
-    if (voiceError) voiceErrorRef.current?.focus();
-  }, [voiceError]);
 
   const extractDetails = async () => {
     try {
@@ -233,24 +257,15 @@ export function OnboardingFlow({ locale, transcriptAdapter, profileGateway, extr
   const review = async () => {
     setExtracting(true);
     const extracted = await extractDetails();
-    setWish((current) => ({ ...extracted, planConsent: current.planConsent, matchingConsent: current.matchingConsent }));
+    setWish((current) => ({
+      ...extracted,
+      planWeeks: current.planWeeks,
+      planConsent: current.planConsent,
+      matchingConsent: current.matchingConsent,
+    }));
     setTranscriptReviewed(false);
     setExtracting(false);
     setStage("review");
-  };
-
-  const captureVoice = async () => {
-    setCapturing(true);
-    setVoiceError(null);
-    try {
-      const result = await transcriptAdapter.capture(locale);
-      setTranscript(result.transcript);
-      setTranscriptReviewed(false);
-    } catch (error) {
-      setVoiceError(error instanceof TranscriptCaptureError ? error.reason : "unavailable");
-    } finally {
-      setCapturing(false);
-    }
   };
 
   const updateDetails = async () => {
@@ -260,7 +275,12 @@ export function OnboardingFlow({ locale, transcriptAdapter, profileGateway, extr
     for (const key of [...requiredFields, "city" as const]) {
       if (extracted[key] !== wish[key]) changed.add(key);
     }
-    setWish({ ...extracted, planConsent: wish.planConsent, matchingConsent: wish.matchingConsent });
+    setWish({
+      ...extracted,
+      planWeeks: wish.planWeeks,
+      planConsent: wish.planConsent,
+      matchingConsent: wish.matchingConsent,
+    });
     setChangedFields(changed);
     setTranscriptReviewed(false);
     setExtracting(false);
@@ -283,7 +303,11 @@ export function OnboardingFlow({ locale, transcriptAdapter, profileGateway, extr
     try {
       await profileGateway.save(wish);
       setTranscript("");
-      setStage("success");
+      if (onConfirmed) {
+        onConfirmed(wish);
+      } else {
+        setStage("success");
+      }
     } catch (error) {
       setSaveError(error instanceof ProfileSaveError ? error.reason : "unavailable");
     } finally {
@@ -302,7 +326,7 @@ export function OnboardingFlow({ locale, transcriptAdapter, profileGateway, extr
           <p>{text.successBody}</p>
           {onConfirmed && (
             <button className="primary-button onboarding-plan-action" type="button" onClick={() => onConfirmed(wish)}>
-              {text.reviewPlan}
+              {text.reviewPlan(wish.planWeeks)}
             </button>
           )}
         </div>
@@ -326,25 +350,20 @@ export function OnboardingFlow({ locale, transcriptAdapter, profileGateway, extr
             onChange={(event) => {
               setTranscript(event.target.value);
               setTranscriptReviewed(false);
-              setVoiceError(null);
             }}
             rows={6}
           />
-          <div className="voice-row">
-            <button className="secondary-button" type="button" onClick={captureVoice} disabled={capturing}>
-              <Mic aria-hidden="true" />
-              {capturing ? text.listening : text.startSpeaking}
-            </button>
-            <p role="status">{capturing ? text.listening : text.typeStatus}</p>
-          </div>
-          {voiceError && (
-            <p className="voice-error" role="alert" ref={voiceErrorRef} tabIndex={-1}>
-              {text.voiceErrors[voiceError]}
-            </p>
-          )}
-          <div className="provider-disclosure">
-            <strong>{transcriptAdapter.providerName}</strong>
-            <span>{transcriptAdapter.providerPolicy}</span>
+          <div className="timeline-field">
+            <label htmlFor="plan-weeks">{text.timelineQuestion}</label>
+            <select
+              id="plan-weeks"
+              value={wish.planWeeks}
+              onChange={(event) => setWish((current) => ({ ...current, planWeeks: Number(event.target.value) }))}
+            >
+              {[2, 4, 6, 8].map((weeks) => (
+                <option key={weeks} value={weeks}>{text.timelineOption(weeks)}</option>
+              ))}
+            </select>
           </div>
           <div className="provider-disclosure extraction-disclosure">
             <strong>{detailsGateway.providerName}</strong>
@@ -390,6 +409,18 @@ export function OnboardingFlow({ locale, transcriptAdapter, profileGateway, extr
               }}
               rows={7}
             />
+            <div className="timeline-field review-timeline-field">
+              <label htmlFor="review-plan-weeks">{text.timelineReview}</label>
+              <select
+                id="review-plan-weeks"
+                value={wish.planWeeks}
+                onChange={(event) => setWish((current) => ({ ...current, planWeeks: Number(event.target.value) }))}
+              >
+                {[2, 4, 6, 8].map((weeks) => (
+                  <option key={weeks} value={weeks}>{text.timelineOption(weeks)}</option>
+                ))}
+              </select>
+            </div>
             <div className="transcript-actions">
               <button className="secondary-button" type="button" onClick={() => setTranscriptReviewed(true)}>
                 <Check aria-hidden="true" />{text.transcriptRight}
@@ -422,10 +453,21 @@ export function OnboardingFlow({ locale, transcriptAdapter, profileGateway, extr
                   return (
                     <div className="field-row" key={key} data-changed={changedFields.has(key) || undefined}>
                       <div className="field-copy">
-                        <span className="field-label">{text.labels[key]}{requiredFields.includes(key) && <span aria-hidden="true"> *</span>}</span>
+                        <span className="field-label-line">
+                          <span className="field-label">{text.labels[key]}</span>
+                          {requiredFields.includes(key) && (
+                            <RequiredFieldMarker
+                              fieldId={key}
+                              fieldLabel={text.labels[key]}
+                              requiredLabel={text.required}
+                              missingGuidance={text.missing}
+                              missing={!wish[key]}
+                            />
+                          )}
+                        </span>
                         {wish[key]
                           ? <strong>{wish[key]}</strong>
-                          : <span className="missing-detail" role="status">{requiredFields.includes(key) ? text.missing : text.missingOptional}</span>}
+                          : !requiredFields.includes(key) && <span className="missing-detail">{text.missingOptional}</span>}
                         {key === "goal" && wish.goal && <span className="field-context">{text.goalContext}</span>}
                         {changedFields.has(key) && <small>{text.changed}</small>}
                       </div>
@@ -458,7 +500,7 @@ export function OnboardingFlow({ locale, transcriptAdapter, profileGateway, extr
                         checked={wish.planConsent}
                         onChange={(event) => setWish((current) => ({ ...current, planConsent: event.target.checked }))}
                       />
-                      <span>{text.planConsent} <strong aria-hidden="true">*</strong></span>
+                      <span>{text.planConsent(wish.planWeeks)} <strong aria-hidden="true">*</strong></span>
                     </label>
                     <label className="consent-row">
                       <input
@@ -483,7 +525,7 @@ export function OnboardingFlow({ locale, transcriptAdapter, profileGateway, extr
           <button className="primary-button" type="button" onClick={saveProfile} disabled={saving}>{text.retry}</button>
         ) : (
           <button className="primary-button" type="button" onClick={saveProfile} disabled={!complete || saving}>
-            {saving ? text.saving : text.confirm}
+            {saving ? text.saving : text.confirm(wish.planWeeks)}
           </button>
         )}
       </div>
