@@ -8,6 +8,25 @@ from app.config import Settings
 from app.main import create_app
 
 
+class AvailableCostControls:
+    def read(self):
+        return type("Controls", (), {"maintenance_mode": False})()
+
+
+def production_app():
+    return create_app(
+        Settings(
+            app_env="production",
+            demo_mode=False,
+            adapter_mode="production",
+            firebase_project_id="sakhicircle-production",
+            firebase_app_id="web-app",
+            firestore_database_id="(default)",
+        ),
+        cost_control_reader=AvailableCostControls(),
+    )
+
+
 def test_protected_session_rejects_missing_token() -> None:
     app = create_app(Settings(app_env="test", demo_mode=True))
     response = TestClient(app).get("/api/v1/auth/session")
@@ -18,18 +37,7 @@ def test_protected_session_rejects_missing_token() -> None:
 
 def test_demo_token_is_accepted_only_when_demo_mode_is_enabled() -> None:
     demo_client = TestClient(create_app(Settings(app_env="test", demo_mode=True)))
-    production_client = TestClient(
-        create_app(
-            Settings(
-                app_env="production",
-                demo_mode=False,
-                adapter_mode="production",
-                firebase_project_id="sakhicircle-production",
-                firebase_app_id="web-app",
-                firestore_database_id="(default)",
-            )
-        )
-    )
+    production_client = TestClient(production_app())
     headers = {"Authorization": "Bearer demo-learner-token"}
 
     demo_response = demo_client.get("/api/v1/auth/session", headers=headers)
@@ -46,17 +54,7 @@ def test_demo_token_is_accepted_only_when_demo_mode_is_enabled() -> None:
 
 
 def test_production_requires_app_check_in_addition_to_a_valid_id_token() -> None:
-    client = TestClient(
-        create_app(
-            Settings(
-                app_env="production",
-                adapter_mode="production",
-                firebase_project_id="sakhicircle-production",
-                firebase_app_id="web-app",
-                firestore_database_id="(default)",
-            )
-        )
-    )
+    client = TestClient(production_app())
 
     with patch(
         "app.auth._verify_firebase_token",
@@ -78,17 +76,7 @@ def test_production_requires_app_check_in_addition_to_a_valid_id_token() -> None
 
 
 def test_production_accepts_verified_id_and_app_check_tokens() -> None:
-    client = TestClient(
-        create_app(
-            Settings(
-                app_env="production",
-                adapter_mode="production",
-                firebase_project_id="sakhicircle-production",
-                firebase_app_id="web-app",
-                firestore_database_id="(default)",
-            )
-        )
-    )
+    client = TestClient(production_app())
     headers = {
         "Authorization": "Bearer valid-id-token",
         "X-Firebase-AppCheck": "valid-app-check-token",
@@ -114,17 +102,7 @@ def test_production_accepts_verified_id_and_app_check_tokens() -> None:
 
 
 def test_invalid_app_check_token_returns_403_without_token_detail() -> None:
-    client = TestClient(
-        create_app(
-            Settings(
-                app_env="production",
-                adapter_mode="production",
-                firebase_project_id="sakhicircle-production",
-                firebase_app_id="web-app",
-                firestore_database_id="(default)",
-            )
-        )
-    )
+    client = TestClient(production_app())
     headers = {
         "Authorization": "Bearer valid-id-token",
         "X-Firebase-AppCheck": "copied-invalid-app-check-token",
