@@ -16,18 +16,25 @@ import {
 interface JourneyFlowProps {
   locale: Locale;
   gateway: JourneyGateway;
+  planWeeks?: number;
   recommendationGateway?: RecommendationGateway;
   matchingConsent?: boolean;
   initialJourney?: JourneyDraft | null;
 }
 
+const englishWeekWord = (weeks: number) => ({ 2: "two", 4: "four", 6: "six", 8: "eight" })[weeks] ?? String(weeks);
+const hindiWeekWord = (weeks: number) => ({ 2: "दो", 4: "चार", 6: "छह", 8: "आठ" })[weeks] ?? String(weeks);
+
 const copy = {
   en: {
-    loading: "Creating your reviewed four-week plan…",
+    loading: (weeks: number) => `Creating your reviewed ${englishWeekWord(weeks)}-week plan…`,
+    readyTitle: "Your plan is ready",
+    readyBody: (weeks: number) => `Your reviewed details were accepted and your ${englishWeekWord(weeks)}-week plan has been created.`,
+    reviewPlan: (weeks: number) => `Review my ${englishWeekWord(weeks)}-week plan`,
     generationError: "We couldn't create your plan. Your confirmed learning details are safe; try again.",
     retry: "Try creating the plan again",
     notSaved: "Not saved yet",
-    intro: "Review all four weeks. You can change the date, plan title, time, steps, accessible alternative, and reflection before saving.",
+    intro: (weeks: number) => `Review all ${englishWeekWord(weeks)} weeks. You can change the date, plan title, time, steps, accessible alternative, and reflection before saving.`,
     startDate: "Plan start date",
     editTitle: "Edit plan title",
     titleLabel: "Plan title",
@@ -45,13 +52,13 @@ const copy = {
     reflection: "reflection prompt",
     saveDay: "Save day",
     safety: "Safety note",
-    fallback: "We couldn't create a personalised plan just now. Here is a reviewed four-week plan you can use or edit.",
+    fallback: (weeks: number) => `We couldn't create a personalised plan just now. Here is a reviewed ${englishWeekWord(weeks)}-week plan you can use or edit.`,
     retryPersonalised: "Try personalised plan again",
     reject: "Reject this draft",
     confirm: "Confirm and save my plan",
     confirming: "Saving your confirmed plan…",
     saveError: "Your plan was not saved. Your edited draft is still here; check the connection and retry.",
-    savedTitle: "Your four-week plan is saved",
+    savedTitle: (weeks: number) => `Your ${englishWeekWord(weeks)}-week plan is saved`,
     savedBody: "Your reviewed plan is ready. You can now begin with day 1.",
     offlineAvailable: "Available offline on this device",
     offlineUnavailable: "Your plan is saved, but this device could not make it available offline.",
@@ -62,11 +69,14 @@ const copy = {
     createAnother: "Create another plan",
   },
   hi: {
-    loading: "आपकी जाँची हुई चार-सप्ताह की योजना बन रही है…",
+    loading: (weeks: number) => `आपकी जाँची हुई ${hindiWeekWord(weeks)}-सप्ताह की योजना बन रही है…`,
+    readyTitle: "आपकी योजना तैयार है",
+    readyBody: (weeks: number) => `आपकी जाँची हुई जानकारी स्वीकार हो गई और आपकी ${hindiWeekWord(weeks)}-सप्ताह की योजना बन गई है।`,
+    reviewPlan: (weeks: number) => `मेरी ${hindiWeekWord(weeks)}-सप्ताह की योजना देखें`,
     generationError: "आपकी योजना नहीं बन सकी। आपकी पुष्टि की हुई जानकारी सुरक्षित है; फिर कोशिश करें।",
     retry: "योजना फिर बनाएँ",
     notSaved: "अभी सेव नहीं हुई",
-    intro: "चारों सप्ताह जाँचें। सेव करने से पहले तारीख, शीर्षक, समय, चरण, सुविधाजनक विकल्प और विचार बदल सकती हैं।",
+    intro: (weeks: number) => `${hindiWeekWord(weeks)} सप्ताह जाँचें। सेव करने से पहले तारीख, शीर्षक, समय, चरण, सुविधाजनक विकल्प और विचार बदल सकती हैं।`,
     startDate: "योजना शुरू होने की तारीख",
     editTitle: "योजना का शीर्षक बदलें",
     titleLabel: "योजना का शीर्षक",
@@ -84,13 +94,13 @@ const copy = {
     reflection: "विचार का सवाल",
     saveDay: "दिन सेव करें",
     safety: "सुरक्षा नोट",
-    fallback: "अभी आपकी व्यक्तिगत योजना नहीं बन सकी। यहाँ चार सप्ताह की जाँची हुई योजना है, जिसे आप इस्तेमाल या संपादित कर सकती हैं।",
+    fallback: (weeks: number) => `अभी आपकी व्यक्तिगत योजना नहीं बन सकी। यहाँ ${hindiWeekWord(weeks)} सप्ताह की जाँची हुई योजना है, जिसे आप इस्तेमाल या संपादित कर सकती हैं।`,
     retryPersonalised: "व्यक्तिगत योजना फिर बनाएँ",
     reject: "यह ड्राफ़्ट अस्वीकार करें",
     confirm: "पुष्टि करके योजना सेव करें",
     confirming: "आपकी पुष्टि की हुई योजना सेव हो रही है…",
     saveError: "आपकी योजना सेव नहीं हुई। आपका बदला हुआ ड्राफ़्ट यहीं है; कनेक्शन जाँचकर फिर कोशिश करें।",
-    savedTitle: "आपकी चार-सप्ताह की योजना सेव हो गई",
+    savedTitle: (weeks: number) => `आपकी ${hindiWeekWord(weeks)}-सप्ताह की योजना सेव हो गई`,
     savedBody: "आपकी जाँची हुई योजना तैयार है। अब आप पहले दिन से शुरू कर सकती हैं।",
     offlineAvailable: "इस डिवाइस पर ऑफ़लाइन उपलब्ध है",
     offlineUnavailable: "आपकी योजना सेव है, लेकिन यह डिवाइस इसे ऑफ़लाइन उपलब्ध नहीं करा सका।",
@@ -102,11 +112,12 @@ const copy = {
   },
 } as const;
 
-type FlowState = "loading" | "review" | "confirming" | "confirmed" | "rejected" | "error";
+type FlowState = "loading" | "ready" | "review" | "confirming" | "confirmed" | "rejected" | "error";
 
 export function JourneyFlow({
   locale,
   gateway,
+  planWeeks = 4,
   recommendationGateway,
   matchingConsent = false,
   initialJourney = null,
@@ -128,6 +139,7 @@ export function JourneyFlow({
   );
   const headingRef = useRef<HTMLHeadingElement>(null);
   const text = copy[locale];
+  const displayedWeeks = draft?.weeks.length ?? planWeeks;
 
   const generate = async () => {
     setState("loading");
@@ -136,7 +148,7 @@ export function JourneyFlow({
       const created = await gatewayRef.current.create(nextJourneyStartDate());
       setDraft(created);
       setOpenWeek(1);
-      setState("review");
+      setState("ready");
     } catch {
       setState("error");
     }
@@ -149,7 +161,7 @@ export function JourneyFlow({
   }, [restoredJourney]);
 
   useEffect(() => {
-    if (state === "review" || state === "confirmed") headingRef.current?.focus();
+    if (state === "ready" || state === "review" || state === "confirmed") headingRef.current?.focus();
   }, [state]);
 
   const beginTitleEdit = () => {
@@ -221,7 +233,22 @@ export function JourneyFlow({
   };
 
   if (state === "loading") {
-    return <section className="journey-state"><p>{text.loading}</p></section>;
+    return <section className="journey-state" aria-busy="true"><p role="status">{text.loading(displayedWeeks)}</p></section>;
+  }
+
+  if (state === "ready" && draft) {
+    return (
+      <section className="journey-state journey-ready" aria-labelledby="journey-ready-title">
+        <span className="success-mark" aria-hidden="true"><Check /></span>
+        <div>
+          <h1 id="journey-ready-title" ref={headingRef} data-screen-heading tabIndex={-1}>{text.readyTitle}</h1>
+          <p>{text.readyBody(displayedWeeks)}</p>
+          <button className="primary-button onboarding-plan-action" type="button" onClick={() => setState("review")}>
+            {text.reviewPlan(displayedWeeks)}
+          </button>
+        </div>
+      </section>
+    );
   }
 
   if (state === "error") {
@@ -248,7 +275,7 @@ export function JourneyFlow({
       <div className="journey-confirmed-stage">
         <section className="journey-state journey-confirmed" aria-labelledby="journey-confirmed-title">
           <span className="success-mark" aria-hidden="true"><Check /></span>
-          <h1 id="journey-confirmed-title" ref={headingRef} data-screen-heading tabIndex={-1}>{text.savedTitle}</h1>
+          <h1 id="journey-confirmed-title" ref={headingRef} data-screen-heading tabIndex={-1}>{text.savedTitle(displayedWeeks)}</h1>
           <p>{text.savedBody}</p>
           {offlineCacheState === "available" && <p className="offline-status"><ShieldCheck aria-hidden="true" />{text.offlineAvailable}</p>}
           {offlineCacheState === "unavailable" && <p className="offline-warning" role="status">{text.offlineUnavailable}</p>}
@@ -316,7 +343,7 @@ export function JourneyFlow({
         <p className="not-saved"><Check aria-hidden="true" />{text.notSaved}</p>
         {draft.provenance.fallbackUsed && (
           <div className="fallback-panel">
-            <p className="fallback-notice" role="status">{text.fallback}</p>
+            <p className="fallback-notice" role="status">{text.fallback(displayedWeeks)}</p>
             <button className="secondary-button" type="button" onClick={generate}>
               {text.retryPersonalised}
             </button>
@@ -341,7 +368,7 @@ export function JourneyFlow({
             </>
           )}
         </div>
-        <p>{text.intro}</p>
+        <p>{text.intro(displayedWeeks)}</p>
         <label className="journey-date" htmlFor="journey-start-date">
           <CalendarDays aria-hidden="true" />
           <span>{text.startDate}</span>

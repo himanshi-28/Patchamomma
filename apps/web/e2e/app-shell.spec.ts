@@ -82,16 +82,29 @@ const makeJourneyFixture = () => {
 
 const makeRecommendationFixture = () => ({
   contractVersion: "matching-v1.0.0",
-  recommendationType: "partner",
+  recommendationType: "mentor",
   source: "deterministic_synthetic",
   synthetic: true,
   status: "matched",
   scoreThreshold: 65,
   resultLimit: 3,
+  demoProfiles: [
+    "Kavita Demo",
+    "Anita Demo",
+    "Farah Demo",
+    "Jyoti Demo",
+    "Nandini Demo",
+    "Sunita Demo",
+  ].map((displayName, index) => ({
+    candidateId: `syn_partner_demo_${index + 1}`,
+    displayName,
+    synthetic: true as const,
+    hobby: { en: "Watercolour painting", hi: "वॉटरकलर पेंटिंग" },
+  })),
   results: [{
-    candidateId: "syn_partner_0001",
-    candidateType: "partner",
-    displayName: "Kavita Demo",
+    candidateId: "syn_mentor_0001",
+    candidateType: "mentor",
+    displayName: "Leela Mentor Demo",
     synthetic: true,
     score: 100,
     scoreOutOf: 100,
@@ -245,11 +258,12 @@ test("the Sakhi guide opens accessible help without leaving sign-in", async ({ p
   await expect(page.getByText("What would you like help with?")).toBeVisible();
   await expect(page.getByRole("button", { name: "Signing in" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Finding a hobby" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Using voice" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Reviewing my details" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Using voice" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Welcome to SakhiCircle" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Using voice" }).click();
-  await expect(page.getByRole("status")).toContainText("Every voice step also has a text option.");
+  await page.getByRole("button", { name: "Reviewing my details" }).click();
+  await expect(page.getByRole("status")).toContainText("Nothing is saved until you confirm it.");
 });
 
 test("Sakhi's full desktop portrait is visible and her speech bubble stays near her head", async ({ page }) => {
@@ -402,6 +416,23 @@ test("reviewed onboarding details cross the profile boundary only after confirma
       body: JSON.stringify({ status: "saved" }),
     });
   });
+  await page.route(/\/api\/v1\/journeys$/, async (route) => {
+    const headers = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Firebase-AppCheck",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+    };
+    if (route.request().method() === "OPTIONS") {
+      await route.fulfill({ status: 204, headers });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      headers,
+      body: JSON.stringify(makeJourneyFixture()),
+    });
+  });
   await page.goto("/");
   await page.getByRole("button", { name: "Continue as Meera" }).click();
   await page.getByRole("button", { name: "Choose my first hobby" }).click();
@@ -423,7 +454,7 @@ test("reviewed onboarding details cross the profile boundary only after confirma
   await page.getByRole("checkbox", { name: /I agree SakhiCircle may use/ }).check();
   await page.getByRole("button", { name: "Confirm and create my 4-week plan" }).click();
 
-  await expect(page.getByRole("heading", { name: "Your plan is ready to build" })).toBeFocused();
+  await expect(page.getByRole("heading", { name: "Your plan is ready" })).toBeFocused();
   expect(profileRequests).toHaveLength(1);
   expect(profileRequests[0]).not.toHaveProperty("transcript");
   expect(profileRequests[0]).not.toHaveProperty("rawAudio");
@@ -434,23 +465,70 @@ test("reviewed onboarding details cross the profile boundary only after confirma
   });
 });
 
-test("language switching preserves learner words and deterministic voice remains editable", async ({ page }) => {
+test("language switching preserves typed learner words while voice stays out of scope", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Continue as Meera" }).click();
   await page.getByRole("button", { name: "Choose my first hobby" }).click();
 
-  await page.getByRole("button", { name: "Start speaking" }).click();
   const wish = page.getByRole("textbox", { name: "Your learning wish" });
-  const transcript = await wish.inputValue();
-  expect(transcript).toContain("restart watercolours");
-  await expect(page.getByText("SakhiCircle deterministic local voice")).toBeVisible();
+  const transcript = "I want to restart watercolours at a comfortable pace.";
+  await wish.fill(transcript);
+  await expect(page.getByRole("button", { name: "Start speaking" })).toHaveCount(0);
+  await expect(page.getByText("SakhiCircle deterministic local voice")).toHaveCount(0);
 
   await page.getByRole("button", { name: "हिंदी में देखें" }).click();
   await expect(page.getByRole("heading", { name: "अपनी सीखने की इच्छा बताएँ" })).toBeFocused();
   await expect(page.getByRole("textbox", { name: "आपकी सीखने की इच्छा" })).toHaveValue(transcript);
-  await expect(page.getByRole("button", { name: "बोलना शुरू करें" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "बोलना शुरू करें" })).toHaveCount(0);
   await expect(page.getByText("भाषा हिंदी हुई। आपका ड्राफ़्ट नहीं बदला।"))
     .toHaveAttribute("aria-live", "polite");
+});
+
+test("plan creation is shown before the plan-ready screen", async ({ page }) => {
+  let releaseJourney: (() => void) | undefined;
+  const journeyGate = new Promise<void>((resolve) => {
+    releaseJourney = resolve;
+  });
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Firebase-AppCheck",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+  };
+  await page.route("**/api/v1/profile", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: "saved" }) });
+  });
+  await page.route(/\/api\/v1\/journeys$/, async (route) => {
+    if (route.request().method() === "OPTIONS") {
+      await route.fulfill({ status: 204, headers: corsHeaders });
+      return;
+    }
+    await journeyGate;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      headers: corsHeaders,
+      body: JSON.stringify(makeJourneyFixture()),
+    });
+  });
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "Continue as Meera" }).click();
+  await page.getByRole("button", { name: "Choose my first hobby" }).click();
+  await page.getByRole("textbox", { name: "Your learning wish" }).fill(
+    "I want to restart watercolours and paint a greeting card. I can practise for 30 minutes, four days a week. I prefer Hindi, larger text, seated alternatives, and a small online group in Pune.",
+  );
+  await page.getByRole("button", { name: "Review my details" }).click();
+  await page.getByRole("button", { name: "My words look right" }).click();
+  const permissionToggle = page.getByRole("button", { name: "Preferences & permission" });
+  if (await permissionToggle.isVisible()) await permissionToggle.click();
+  await page.getByRole("checkbox", { name: /I agree SakhiCircle may use/ }).check();
+  await page.getByRole("button", { name: "Confirm and create my 4-week plan" }).click();
+
+  await expect(page.getByText("Creating your reviewed four-week plan…")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your plan is ready" })).toHaveCount(0);
+  releaseJourney?.();
+  await expect(page.getByRole("heading", { name: "Your plan is ready" })).toBeFocused();
+  await expect(page.getByText("Creating your reviewed four-week plan…")).toHaveCount(0);
 });
 
 test("bilingual journey stays unsaved through review and persists only the confirmed edits", async ({ page }) => {
@@ -489,7 +567,9 @@ test("bilingual journey stays unsaved through review and persists only the confi
   await page.goto("/");
   await page.getByRole("button", { name: "Continue as Meera" }).click();
   await page.getByRole("button", { name: "Choose my first hobby" }).click();
-  await page.getByRole("button", { name: "Start speaking" }).click();
+  await page.getByRole("textbox", { name: "Your learning wish" }).fill(
+    "I want to restart watercolours and paint a greeting card. I can practise for 30 minutes, four days a week. I prefer Hindi, larger text, seated alternatives, and a small online group in Pune.",
+  );
   await page.getByRole("button", { name: "Review my details" }).click();
   await page.getByRole("button", { name: "My words look right" }).click();
   const permissionToggle = page.getByRole("button", { name: "Preferences & permission" });
@@ -497,9 +577,9 @@ test("bilingual journey stays unsaved through review and persists only the confi
   await page.getByRole("checkbox", { name: /I agree SakhiCircle may use/ }).check();
   await page.getByRole("button", { name: "Confirm and create my 4-week plan" }).click();
 
-  await expect(page.getByRole("heading", { name: "Your plan is ready to build" })).toBeFocused();
+  await expect(page.getByRole("heading", { name: "Your plan is ready" })).toBeFocused();
   expect(profileRequests).toHaveLength(1);
-  expect(journeyCreates).toHaveLength(0);
+  expect(journeyCreates).toHaveLength(1);
   expect(journeyConfirms).toHaveLength(0);
 
   await page.getByRole("button", { name: "Review my four-week plan" }).click();
@@ -516,6 +596,8 @@ test("bilingual journey stays unsaved through review and persists only the confi
   await expect(page.getByRole("heading", { name: "This draft was discarded" })).toBeVisible();
   expect(journeyConfirms).toHaveLength(0);
   await page.getByRole("button", { name: "Create another plan" }).click();
+  await expect(page.getByRole("heading", { name: "Your plan is ready" })).toBeVisible();
+  await page.getByRole("button", { name: "Review my four-week plan" }).click();
   await expect(page.getByRole("heading", { name: "Four steady weeks for watercolour painting" })).toBeVisible();
 
   await page.getByRole("button", { name: "Edit plan title" }).click();
@@ -571,7 +653,7 @@ test("one explainable match is fetched only by the explicit action and survives 
       : { ...route.request().postDataJSON(), status: "confirmed" };
     await route.fulfill({ status: 200, contentType: "application/json", headers, body: JSON.stringify(draft) });
   });
-  await page.route("**/api/v1/recommendations?type=partner", async (route) => {
+  await page.route("**/api/v1/recommendations?type=mentor", async (route) => {
     const headers = {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Headers": "Authorization, X-Firebase-AppCheck",
@@ -593,7 +675,9 @@ test("one explainable match is fetched only by the explicit action and survives 
   await page.goto("/");
   await page.getByRole("button", { name: "Continue as Meera" }).click();
   await page.getByRole("button", { name: "Choose my first hobby" }).click();
-  await page.getByRole("button", { name: "Start speaking" }).click();
+  await page.getByRole("textbox", { name: "Your learning wish" }).fill(
+    "I want to restart watercolours and paint a greeting card. I can practise for 30 minutes, four days a week. I prefer Hindi, larger text, seated alternatives, and a small online group in Pune.",
+  );
   await page.getByRole("button", { name: "Review my details" }).click();
   await page.getByRole("button", { name: "My words look right" }).click();
   const permissionToggle = page.getByRole("button", { name: "Preferences & permission" });
@@ -606,18 +690,20 @@ test("one explainable match is fetched only by the explicit action and survives 
   await page.getByRole("button", { name: "Confirm and save my plan" }).click();
 
   await expect(page.getByRole("heading", { name: "Your four-week plan is saved" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Find my learning partner" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Find my mentor" })).toBeVisible();
   expect(recommendationRequests).toBe(0);
-  await page.getByRole("button", { name: "Find my learning partner" }).click();
+  await page.getByRole("button", { name: "Find my mentor" }).click();
 
-  await expect(page.getByRole("heading", { name: "Your demo learning partner" })).toBeFocused();
+  await expect(page.getByRole("heading", { name: "Your demo mentor" })).toBeFocused();
+  await expect(page.getByRole("heading", { name: "6 demo profiles share your interest" })).toBeVisible();
+  await expect(page.getByRole("list", { name: "Demo profiles interested in Watercolour painting" }).getByRole("listitem")).toHaveCount(6);
   await expect(page.getByText("Demo match — synthetic profile")).toBeVisible();
   await expect(page.getByText("Match score: 100 out of 100")).toBeVisible();
   await expect(page.locator(".recommendation-reasons li")).toHaveCount(3);
   expect(recommendationRequests).toBe(1);
 
   await page.getByRole("button", { name: "हिंदी में देखें" }).click();
-  await expect(page.getByRole("heading", { name: "आपकी डेमो सीखने की साथी" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "आपकी डेमो मेंटर" })).toBeVisible();
   await expect(page.getByText("मैच स्कोर: 100 में से 100")).toBeVisible();
   expect(recommendationRequests).toBe(1);
 

@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from .profile import LearningWishProfile
 
 SCHEMA_VERSION = "1.0.0"
+FLEXIBLE_SCHEMA_VERSION = "1.1.0"
 REVIEW_CONTRACT_VERSION = "safety-accessibility-v1"
 PASSED_CHECKS = ["schema", "schedule", "accessibility", "safety", "localization"]
 FallbackReason = Literal[
@@ -91,8 +92,8 @@ class JourneyReview(StrictModel):
 
 
 class JourneyActivity(StrictModel):
-    activity_id: str = Field(alias="activityId", pattern=r"^day-(0[1-9]|1[0-9]|2[0-8])$")
-    day_number: int = Field(alias="dayNumber", ge=1, le=28)
+    activity_id: str = Field(alias="activityId", pattern=r"^day-(0[1-9]|[1-4][0-9]|5[0-6])$")
+    day_number: int = Field(alias="dayNumber", ge=1, le=56)
     date: date
     kind: ActivityKind
     required: bool
@@ -113,14 +114,14 @@ class JourneyActivity(StrictModel):
 
 
 class JourneyWeek(StrictModel):
-    week_number: int = Field(alias="weekNumber", ge=1, le=4)
+    week_number: int = Field(alias="weekNumber", ge=1, le=8)
     theme: LocalizedTitle
     outcome: LocalizedText
     activities: list[JourneyActivity] = Field(min_length=7, max_length=7)
 
 
 class JourneyDocument(StrictModel):
-    schema_version: Literal[SCHEMA_VERSION] = Field(alias="schemaVersion")
+    schema_version: Literal["1.0.0", "1.1.0"] = Field(alias="schemaVersion")
     journey_id: str = Field(alias="journeyId", min_length=12, max_length=120)
     status: Literal["draft", "confirmed"]
     starts_on: date = Field(alias="startsOn")
@@ -130,17 +131,22 @@ class JourneyDocument(StrictModel):
     summary: LocalizedText
     provenance: JourneyProvenance
     review: JourneyReview
-    weeks: list[JourneyWeek] = Field(min_length=4, max_length=4)
+    weeks: list[JourneyWeek] = Field(min_length=2, max_length=8)
 
     @model_validator(mode="after")
     def exact_calendar_structure(self) -> "JourneyDocument":
+        expected_schema = schema_version_for_weeks(len(self.weeks))
+        if self.schema_version != expected_schema:
+            raise ValueError("Journey schema version must agree with its timeline length")
         if self.languages != ["en", "hi"]:
             raise ValueError("Journey languages must be exactly English then Hindi")
-        if [week.week_number for week in self.weeks] != [1, 2, 3, 4]:
-            raise ValueError("Journey weeks must be numbered 1 through 4")
+        expected_weeks = list(range(1, len(self.weeks) + 1))
+        if [week.week_number for week in self.weeks] != expected_weeks:
+            raise ValueError("Journey weeks must be consecutively numbered")
         activities = [activity for week in self.weeks for activity in week.activities]
-        if [activity.day_number for activity in activities] != list(range(1, 29)):
-            raise ValueError("Journey days must be consecutive 1 through 28")
+        expected_days = list(range(1, len(self.weeks) * 7 + 1))
+        if [activity.day_number for activity in activities] != expected_days:
+            raise ValueError("Journey days must be consecutive across the selected timeline")
         for day_number, activity in enumerate(activities, start=1):
             expected_id = f"day-{day_number:02d}"
             expected_date = self.starts_on + timedelta(days=day_number - 1)
@@ -153,6 +159,10 @@ class JourneyDocument(StrictModel):
             if actual_week != expected_week:
                 raise ValueError("Activity week must agree with its day number")
         return self
+
+
+def schema_version_for_weeks(plan_weeks: int) -> Literal["1.0.0", "1.1.0"]:
+    return SCHEMA_VERSION if plan_weeks == 4 else FLEXIBLE_SCHEMA_VERSION
 
 
 class JourneyCreateRequest(StrictModel):
@@ -172,6 +182,8 @@ def validate_journey_for_profile(
     profile: LearningWishProfile,
 ) -> JourneyDocument:
     max_minutes, max_days = availability_limits(profile)
+    if len(journey.weeks) != profile.plan_weeks:
+        raise ValueError("Journey length must match the confirmed learning timeline")
     for week in journey.weeks:
         required_non_rest = sum(
             activity.required and activity.kind != "rest" for activity in week.activities
@@ -187,7 +199,7 @@ def validate_journey_for_profile(
 PHASES = [
     (
         ("Begin gently", "सहज शुरुआत"),
-        ("Set up comfortably and learn the basic materials.", "सुविधा से तैयारी करें और बुनियादी सामग्री समझें।"),
+        ("Set up comfortably and learn the foundations.", "सुविधा से तैयारी करें और बुनियादी बातें समझें।"),
     ),
     (
         ("Build the foundation", "बुनियाद मजबूत करें"),
@@ -204,7 +216,7 @@ PHASES = [
 ]
 
 
-def _activity_copy(kind: ActivityKind, day_number: int) -> dict[str, object]:
+def _activity_copy(kind: ActivityKind, day_number: int, hobby: str) -> dict[str, object]:
     if kind == "rest":
         return {
             "title": {"en": "Rest and notice", "hi": "आराम करें और ध्यान दें"},
@@ -213,8 +225,8 @@ def _activity_copy(kind: ActivityKind, day_number: int) -> dict[str, object]:
                 "hi": ["आज आराम करें, या चाहें तो अपने किसी एक काम को फिर देखें।"],
             },
             "accessibleAlternative": {
-                "en": "Listen to your notes or describe your progress aloud instead of handling materials.",
-                "hi": "सामग्री उपयोग करने के बजाय अपने नोट सुनें या अपनी प्रगति बोलकर बताएँ।",
+                "en": "Listen to your notes or describe your progress aloud instead of completing the activity.",
+                "hi": "गतिविधि करने के बजाय अपने नोट सुनें या अपनी प्रगति बोलकर बताएँ।",
             },
             "reflectionPrompt": {
                 "en": "What would make the next practice feel comfortable?",
@@ -241,38 +253,38 @@ def _activity_copy(kind: ActivityKind, day_number: int) -> dict[str, object]:
                 "hi": "अब कौन-सा चरण अधिक स्पष्ट लगता है?",
             },
             "safetyNote": {
-                "en": "Review in good light and pause if your eyes or hands feel tired.",
-                "hi": "अच्छी रोशनी में देखें और आँखें या हाथ थकें तो रुकें।",
+                "en": "Review at a comfortable pace and pause if you feel tired.",
+                "hi": "सहज गति से जाँचें और थकान होने पर रुकें।",
             },
         }
     action = "Learn" if kind == "learn" else "Create" if kind == "create" else "Practise"
     action_hi = "सीखें" if kind == "learn" else "बनाएँ" if kind == "create" else "अभ्यास करें"
     return {
         "title": {
-            "en": f"{action} one steady step · Day {day_number}",
-            "hi": f"एक सहज चरण {action_hi} · दिन {day_number}",
+            "en": f"{action} one steady {hobby} step · Day {day_number}",
+            "hi": f"{hobby} का एक सहज चरण {action_hi} · दिन {day_number}",
         },
         "instructions": {
             "en": [
-                "Set out only the materials you need within easy reach.",
-                "Complete one small practice step, then stop at the planned time.",
+                f"Prepare a comfortable space for {hobby}.",
+                f"Complete one small {hobby} practice step, then stop at the planned time.",
             ],
             "hi": [
-                "केवल ज़रूरी सामग्री आसान पहुँच में रखें।",
-                "एक छोटा अभ्यास चरण पूरा करें और तय समय पर रुकें।",
+                f"{hobby} के लिए एक सहज जगह तैयार करें।",
+                f"{hobby} का एक छोटा अभ्यास चरण पूरा करें और तय समय पर रुकें।",
             ],
         },
         "accessibleAlternative": {
-            "en": "Work seated at a table, use a raised board, and divide the step into shorter turns.",
-            "hi": "मेज़ पर बैठकर, ऊँचा बोर्ड इस्तेमाल करके और चरण को छोटे हिस्सों में बाँटकर काम करें।",
+            "en": "Choose a seated or lower-effort version and divide the step into shorter turns.",
+            "hi": "बैठकर या कम मेहनत वाला विकल्प चुनें और चरण को छोटे हिस्सों में बाँटें।",
         },
         "reflectionPrompt": {
             "en": "What felt easier after today's practice?",
             "hi": "आज के अभ्यास के बाद क्या आसान लगा?",
         },
         "safetyNote": {
-            "en": "Use non-toxic materials, keep water away from electrical items, and pause if uncomfortable.",
-            "hi": "गैर-विषैले सामान इस्तेमाल करें, पानी को बिजली के सामान से दूर रखें और असहजता होने पर रुकें।",
+            "en": "Keep the practice area clear and pause if anything feels uncomfortable.",
+            "hi": "अभ्यास की जगह साफ़ रखें और असहजता होने पर रुकें।",
         },
     }
 
@@ -287,8 +299,15 @@ def _build_journey(
     attempts: int = 0,
 ) -> JourneyDocument:
     max_minutes, max_days = availability_limits(profile)
+    english_weeks = {2: "Two", 4: "Four", 6: "Six", 8: "Eight"}[profile.plan_weeks]
+    hindi_weeks = {2: "दो", 4: "चार", 6: "छह", 8: "आठ"}[profile.plan_weeks]
     weeks: list[dict[str, object]] = []
-    for week_index, (theme, outcome) in enumerate(PHASES):
+    for week_index in range(profile.plan_weeks):
+        phase_index = min(
+            week_index * len(PHASES) // profile.plan_weeks,
+            len(PHASES) - 1,
+        )
+        theme, outcome = PHASES[phase_index]
         activities: list[dict[str, object]] = []
         for day_index in range(7):
             day_number = week_index * 7 + day_index + 1
@@ -312,7 +331,7 @@ def _build_journey(
                     "kind": kind,
                     "required": required,
                     "durationMinutes": duration,
-                    **_activity_copy(kind, day_number),
+                    **_activity_copy(kind, day_number, profile.hobby),
                 }
             )
         weeks.append(
@@ -327,15 +346,15 @@ def _build_journey(
     fallback = generator == "curated_fallback"
     journey = JourneyDocument.model_validate(
         {
-            "schemaVersion": SCHEMA_VERSION,
+            "schemaVersion": schema_version_for_weeks(profile.plan_weeks),
             "journeyId": journey_id,
             "status": "draft",
             "startsOn": starts_on,
             "timezone": "Asia/Kolkata",
             "languages": ["en", "hi"],
             "title": {
-                "en": "Four steady weeks for your learning goal",
-                "hi": "आपके सीखने के लक्ष्य के लिए चार सहज सप्ताह",
+                "en": f"{english_weeks} steady weeks for {profile.hobby}",
+                "hi": f"{profile.hobby} के लिए {hindi_weeks} सहज सप्ताह",
             },
             "summary": {
                 "en": (

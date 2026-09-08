@@ -31,6 +31,7 @@ import {
   type TranscriptAdapter,
 } from "./onboarding/runtime";
 import type { RecommendationGateway } from "./recommendation/runtime";
+import { DemoActivityCenter } from "./activities/DemoActivityCenter";
 
 type Locale = "en" | "hi";
 type Destination = "today" | "circle" | "mentors";
@@ -90,7 +91,7 @@ interface Copy {
   };
 }
 
-type GuideTopic = "signIn" | "hobby" | "voice";
+type GuideTopic = "signIn" | "hobby" | "review";
 type AuthStatus =
   | "emailSent"
   | "emailUnavailable"
@@ -129,12 +130,12 @@ const copy: Record<Locale, Copy> = {
       guideTopics: {
         signIn: "Signing in",
         hobby: "Finding a hobby",
-        voice: "Using voice",
+        review: "Reviewing my details",
       },
       guideReplies: {
         signIn: "Use your email or Google. You will not need to create a password.",
         hobby: "After sign-in, tell me what interests you. I can help you choose a comfortable first step.",
-        voice: "Every voice step also has a text option. You stay in control and confirm before anything is saved.",
+        review: "You can edit every suggested detail. Nothing is saved until you confirm it.",
       },
       title: "Welcome to SakhiCircle",
       tagline: "A friendly place to learn, teach, and belong.",
@@ -187,12 +188,12 @@ const copy: Record<Locale, Copy> = {
       guideTopics: {
         signIn: "साइन इन करना",
         hobby: "शौक चुनना",
-        voice: "वॉइस का उपयोग",
+        review: "अपने विवरण जाँचना",
       },
       guideReplies: {
         signIn: "अपने ईमेल या Google का उपयोग करें। आपको पासवर्ड बनाने की ज़रूरत नहीं है।",
         hobby: "साइन इन करने के बाद, हमें अपनी रुचि बताएँ। हम पहला सहज कदम चुनने में आपकी मदद करेंगे।",
-        voice: "हर वॉइस चरण में टेक्स्ट का विकल्प भी है। नियंत्रण आपके पास है और आपकी पुष्टि से पहले कुछ सेव नहीं होता।",
+        review: "आप हर सुझाए गए विवरण को बदल सकती हैं। आपकी पुष्टि से पहले कुछ सेव नहीं होता।",
       },
       title: "SakhiCircle में आपका स्वागत है",
       tagline: "सीखने, सिखाने और अपनापन पाने की एक दोस्ताना जगह।",
@@ -252,6 +253,7 @@ export function App({
   const [journeyStarted, setJourneyStarted] = useState(false);
   const [restoredJourney, setRestoredJourney] = useState<JourneyDraft | null>(null);
   const [matchingConsent, setMatchingConsent] = useState(false);
+  const [planWeeks, setPlanWeeks] = useState(4);
   const [voiceAdapter] = useState(() => transcriptAdapter ?? createDeterministicTranscriptAdapter());
   const [profileBoundary] = useState<ProfileGateway>(() => profileGateway ?? ({
     save: async () => { throw new Error("Profile saving is not configured."); },
@@ -278,12 +280,14 @@ export function App({
       setOnboardingStarted(false);
       setJourneyStarted(false);
       setMatchingConsent(false);
+      setPlanWeeks(4);
       setRestoredJourney(null);
       return;
     }
     const cachedJourney = readConfirmedJourneyCache();
     if (!cachedJourney) return;
     setRestoredJourney(cachedJourney);
+    setPlanWeeks(cachedJourney.weeks.length);
     setOnboardingStarted(true);
     setJourneyStarted(true);
   }, [authenticated]);
@@ -440,7 +444,7 @@ export function App({
                 <div className="guide-topics">
                   <button type="button" onClick={() => setGuideReply("signIn")}>{text.login.guideTopics.signIn}</button>
                   <button type="button" onClick={() => setGuideReply("hobby")}>{text.login.guideTopics.hobby}</button>
-                  <button type="button" onClick={() => setGuideReply("voice")}>{text.login.guideTopics.voice}</button>
+                  <button type="button" onClick={() => setGuideReply("review")}>{text.login.guideTopics.review}</button>
                 </div>
                 {guideReply && <p className="guide-reply" role="status">{text.login.guideReplies[guideReply]}</p>}
               </div>
@@ -567,7 +571,7 @@ export function App({
           {helpOpen && (
             <aside id={helpId} className="help-panel" aria-label={text.help}>
               <strong>{locale === "en" ? "You are never stuck here." : "यहाँ आपको कभी अकेले समझने की ज़रूरत नहीं है।"}</strong>
-              <span>{locale === "en" ? "Every voice step also works with text. Helpful explanations appear beneath unfamiliar sections." : "हर वॉइस चरण टेक्स्ट के साथ भी काम करता है। नए भागों के नीचे सरल समझाइश दिखाई देती है।"}</span>
+              <span>{locale === "en" ? "Type your learning wish, then review every suggested detail before saving. Helpful explanations appear beneath unfamiliar sections." : "अपनी सीखने की इच्छा लिखें, फिर सेव करने से पहले हर सुझाया गया विवरण जाँचें। नए भागों के नीचे सरल समझाइश दिखाई देती है।"}</span>
             </aside>
           )}
 
@@ -575,6 +579,7 @@ export function App({
             <JourneyFlow
               locale={locale}
               gateway={journeyGateway}
+              planWeeks={planWeeks}
               recommendationGateway={recommendationGateway}
               matchingConsent={matchingConsent}
               initialJourney={restoredJourney}
@@ -589,6 +594,7 @@ export function App({
               extractionGateway={profileExtractionGateway}
               onConfirmed={journeyGateway ? (profile) => {
                 setMatchingConsent(profile.matchingConsent);
+                setPlanWeeks(profile.planWeeks);
                 setJourneyStarted(true);
               } : undefined}
             />
@@ -628,7 +634,7 @@ export function App({
                   </div>
                 )}
                 <ol id={stepsId} className={stepsOpen ? "steps-open" : undefined}>
-                  <li><span>1</span><div><strong>{locale === "en" ? "Share your wish" : "अपनी इच्छा बताएँ"}</strong><p>{locale === "en" ? "Speak or type what you want to learn." : "जो सीखना चाहती हैं, बोलें या लिखें।"}</p></div></li>
+                  <li><span>1</span><div><strong>{locale === "en" ? "Share your wish" : "अपनी इच्छा बताएँ"}</strong><p>{locale === "en" ? "Type what you want to learn." : "जो सीखना चाहती हैं, लिखें।"}</p></div></li>
                   <li><span>2</span><div><strong>{locale === "en" ? "Review your plan" : "अपनी योजना देखें"}</strong><p>{locale === "en" ? "Nothing is saved until you confirm it." : "आपकी पुष्टि से पहले कुछ भी सेव नहीं होगा।"}</p></div></li>
                   <li><span>3</span><div><strong>{locale === "en" ? "Meet your people" : "अपने लोगों से मिलें"}</strong><p>{locale === "en" ? "See why each partner, circle, or mentor fits." : "जानें कि हर साथी, सर्कल या मेंटर आपके लिए सही क्यों है।"}</p></div></li>
                 </ol>
@@ -646,7 +652,7 @@ export function App({
           )}
 
           {destination === "mentors" && (
-            <section className="empty-view" aria-labelledby="mentors-heading">
+            demoMode && onboardingStarted ? <DemoActivityCenter locale={locale} /> : <section className="empty-view" aria-labelledby="mentors-heading">
               <GraduationCap aria-hidden="true" />
               <h1 id="mentors-heading" data-screen-heading tabIndex={-1}>{text.mentorsHeading}</h1>
               <p>{text.mentorsBody}</p>

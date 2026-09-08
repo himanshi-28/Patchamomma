@@ -34,7 +34,7 @@ export interface JourneyWeek {
 }
 
 export interface JourneyDraft {
-  schemaVersion: "1.0.0";
+  schemaVersion: "1.0.0" | "1.1.0";
   journeyId: string;
   status: "draft" | "confirmed";
   startsOn: string;

@@ -19,6 +19,7 @@ const FALLBACK_REASONS = new Set([
   "localization_failed_twice",
 ]);
 const PASSED_CHECKS = ["schema", "schedule", "accessibility", "safety", "localization"] as const;
+const SUPPORTED_TIMELINES = new Set([2, 4, 6, 8]);
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -105,11 +106,12 @@ function copyWeek(value: unknown, expectedWeek: number): JourneyWeek | null {
 
 function sanitizeConfirmedJourney(value: unknown): JourneyDraft | null {
   const source = asRecord(value);
-  if (!source || source.schemaVersion !== "1.0.0" || source.status !== "confirmed"
+  if (!source || (source.schemaVersion !== "1.0.0" && source.schemaVersion !== "1.1.0") || source.status !== "confirmed"
     || source.timezone !== "Asia/Kolkata" || !isIsoDate(source.startsOn)
     || !Array.isArray(source.languages) || source.languages.length !== 2
     || source.languages[0] !== "en" || source.languages[1] !== "hi"
-    || !Array.isArray(source.weeks) || source.weeks.length !== 4) return null;
+    || !Array.isArray(source.weeks) || !SUPPORTED_TIMELINES.has(source.weeks.length)
+    || (source.weeks.length === 4 ? source.schemaVersion !== "1.0.0" : source.schemaVersion !== "1.1.0")) return null;
 
   const journeyId = nonEmptyString(source.journeyId);
   const title = copyLocalizedText(source.title);
@@ -143,7 +145,7 @@ function sanitizeConfirmedJourney(value: unknown): JourneyDraft | null {
   }
 
   return {
-    schemaVersion: "1.0.0",
+    schemaVersion: source.schemaVersion,
     journeyId,
     status: "confirmed",
     startsOn: source.startsOn,

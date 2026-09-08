@@ -148,6 +148,7 @@ def test_gemini_workflow_first_pass_returns_strict_bilingual_allowlisted_draft()
         "experience",
         "goal",
         "availability",
+        "planWeeks",
         "language",
         "accessibility",
         "format",
@@ -156,6 +157,7 @@ def test_gemini_workflow_first_pass_returns_strict_bilingual_allowlisted_draft()
         "attempt",
         "rejectionCodes",
     }
+    assert sent["planWeeks"] == 4
     assert sent["rejectionCodes"] == []
     assert {
         "city",

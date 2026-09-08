@@ -194,6 +194,79 @@ def test_exact_65_threshold_stable_tie_breaking_and_three_result_limit() -> None
     ]
 
 
+def test_demo_pool_keeps_six_hard_filtered_same_interest_profiles_without_expanding_ranked_results() -> None:
+    dataset, learner = setup_matching()
+    eligible = [
+        dataset.learners[0].model_copy(
+            update={
+                "candidate_id": f"syn_partner_demo_{index}",
+                "display_name": f"Same Interest Demo {index}",
+            },
+        )
+        for index in range(1, 8)
+    ]
+    blocked = eligible[0].model_copy(
+        update={"candidate_id": "syn_partner_blocked_demo"},
+    )
+    response = generate_recommendations(
+        learner=learner,
+        recommendation_type="partner",
+        dataset=dataset.model_copy(
+            update={
+                "learners": [*eligible, blocked],
+                "relations": [
+                    dataset.relations[0].model_copy(
+                        update={
+                            "source_candidate_id": "syn_partner_blocked_demo",
+                            "target_candidate_id": "syn_requester_0001",
+                        },
+                    ),
+                ],
+            },
+        ),
+        requester_candidate_id="syn_requester_0001",
+    )
+
+    assert len(response.results) == 3
+    assert len(response.demo_profiles) == 6
+    assert "syn_partner_blocked_demo" not in {
+        profile.candidate_id for profile in response.demo_profiles
+    }
+    assert {profile.hobby.en for profile in response.demo_profiles} == {
+        "Watercolour painting"
+    }
+    assert all(profile.synthetic for profile in response.demo_profiles)
+
+
+def test_every_supported_interest_has_a_mentor_and_six_demo_profiles() -> None:
+    dataset = generate_synthetic_dataset()
+
+    for hobby in dataset.hobbies:
+        profile = LearningWishProfile.model_validate(
+            {
+                **PROFILE,
+                "hobby": hobby.label.en,
+                "goal": "Build a regular practice routine",
+                "language": "English and Hindi",
+                "format": "At home · individual",
+                "city": "",
+            },
+        )
+        learner = canonicalize_profile(profile, dataset.hobbies)
+        assert learner is not None
+
+        response = generate_recommendations(
+            learner=learner,
+            recommendation_type="mentor",
+            dataset=dataset,
+            requester_candidate_id="syn_requester_0001",
+        )
+
+        assert response.status == "matched", hobby.hobby_id
+        assert len(response.demo_profiles) == 6, hobby.hobby_id
+        assert {item.hobby.en for item in response.demo_profiles} == {hobby.label.en}
+
+
 def test_reviewed_english_and_hindi_copy_cannot_change_ids_scores_or_order() -> None:
     dataset, learner = setup_matching()
     response = generate_recommendations(

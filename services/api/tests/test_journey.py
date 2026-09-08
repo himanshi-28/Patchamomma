@@ -79,6 +79,39 @@ def test_optional_first_goal_does_not_create_a_dangling_summary_label() -> None:
     assert journey.summary.hi == "Watercolour painting के लिए जाँची हुई योजना।"
 
 
+def test_arbitrary_topic_fallback_stays_relevant_without_material_specific_advice() -> None:
+    profile = LearningWishProfile.model_validate(
+        {
+            **PROFILE,
+            "hobby": "Kathak",
+            "goal": "Perform a short piece",
+            "availability": "15 minutes · 3 days a week",
+        }
+    )
+
+    journey = build_curated_fallback(
+        profile=profile,
+        starts_on=date.fromisoformat(STARTS_ON),
+        journey_id="journey_kathak_fallback",
+        reason="workflow_unavailable",
+    )
+
+    required = [
+        activity
+        for week in journey.weeks
+        for activity in week.activities
+        if activity.required
+    ]
+    assert "Kathak" in journey.title.en
+    assert all(
+        "kathak" in " ".join(
+            [activity.title.en, *activity.instructions.en]
+        ).casefold()
+        for activity in required
+    )
+    assert "materials" not in journey.model_dump_json().casefold()
+
+
 def test_deterministic_draft_has_exact_bilingual_28_day_structure_and_no_write() -> None:
     client, app = client_with_profile()
 
