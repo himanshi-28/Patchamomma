@@ -2408,9 +2408,10 @@ code {
 
 .activity-center-heading {
   display: flex;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 24px;
-  margin-bottom: 24px;
+  margin-bottom: 28px;
 }
 
 .activity-center-heading h1 {
@@ -2435,23 +2436,237 @@ code {
   height: 22px;
 }
 
-.activity-confirmation {
-  margin-bottom: 20px;
-  padding: 14px 16px;
+.mentor-register-trigger {
+  flex: none;
+  gap: 10px;
+}
+
+.mentor-register-trigger svg {
+  width: 22px;
+  height: 22px;
+}
+
+.mentor-registration {
+  margin-bottom: 28px;
+  padding: 24px;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.mentor-registration h2,
+.mentor-browser h2,
+.mentor-ticket h2 {
+  margin-bottom: 8px;
+  font-size: 1.563rem;
+}
+
+.mentor-registration > div > p {
+  max-width: 70ch;
+  margin: 0 0 20px;
+  color: var(--color-muted);
+}
+
+.mentor-registration form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.mentor-registration label,
+.mentor-filters label {
+  display: grid;
+  gap: 7px;
+  color: var(--color-ink);
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.mentor-registration input,
+.mentor-registration select,
+.mentor-filters select {
+  width: 100%;
+  min-height: 54px;
+  padding: 10px 14px;
+  border: 2px solid var(--color-border);
   border-radius: var(--radius-sm);
   color: var(--color-ink);
-  background: var(--color-surface-strong);
+  background: var(--color-bg);
+  font: inherit;
+  font-weight: 500;
+}
+
+.mentor-registration form .primary-button {
+  align-self: end;
+}
+
+.mentor-registration-confirmation {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 18px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
   font-weight: 700;
+}
+
+.mentor-registration-confirmation svg {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  color: var(--color-primary-hover);
+}
+
+.mentor-ticket {
+  margin-bottom: 28px;
+  overflow: hidden;
+  border: 2px solid var(--color-ink);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+}
+
+.mentor-ticket header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 20px 22px;
+  color: var(--color-ink);
+  background: var(--color-surface-strong);
+}
+
+.mentor-ticket header svg {
+  width: 28px;
+  height: 28px;
+  flex: none;
+}
+
+.mentor-ticket header p,
+.mentor-ticket h2 {
+  margin: 0;
+}
+
+.mentor-ticket dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+  padding: 8px 22px 18px;
+}
+
+.mentor-ticket dl div {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.mentor-ticket dl div:nth-child(odd) {
+  padding-right: 20px;
+}
+
+.mentor-ticket dl div:nth-child(even) {
+  padding-left: 20px;
+  border-left: 1px solid var(--color-line);
+}
+
+.mentor-ticket dt {
+  margin-bottom: 3px;
+  color: var(--color-muted);
+  font-size: 0.94rem;
+  font-weight: 800;
+}
+
+.mentor-ticket dd {
+  margin: 0;
+  font-weight: 650;
+}
+
+.mentor-browser {
+  padding-top: 24px;
+  border-top: 1px solid var(--color-line);
+}
+
+.mentor-browser-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.mentor-browser-heading p {
+  margin: 0;
+  color: var(--color-muted);
+  font-weight: 750;
+}
+
+.mentor-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 18px 0 16px;
+  padding: 18px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.mentor-date-strip {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 2px 0 10px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.mentor-date-strip button {
+  min-width: max-content;
+  min-height: 48px;
+  padding: 9px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-ink);
+  background: var(--color-bg);
+  font: inherit;
+  font-size: 0.94rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.mentor-date-strip button:hover,
+.mentor-date-strip button[aria-pressed="true"] {
+  background: var(--color-surface-strong);
+}
+
+.mentor-empty-state {
+  display: grid;
+  justify-items: start;
+  margin-top: 16px;
+  padding: 24px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.mentor-empty-state > svg {
+  width: 28px;
+  height: 28px;
+  margin-bottom: 10px;
+}
+
+.mentor-empty-state h3 {
+  margin-bottom: 5px;
+  font-size: 1.25rem;
+}
+
+.mentor-empty-state p {
+  margin: 0 0 16px;
+  color: var(--color-muted);
 }
 
 .activity-list {
   display: grid;
-  gap: 12px;
 }
 
 .activity-listing {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 24px;
   padding: 20px 0;
@@ -2463,12 +2678,22 @@ code {
 }
 
 .activity-listing-main {
+  flex: 1;
   min-width: 0;
 }
 
 .activity-listing h2 {
-  margin: 4px 0 8px;
-  font-size: 1.25rem;
+  margin: 6px 0 8px;
+  font-size: 1.375rem;
+  text-wrap: balance;
+}
+
+.activity-listing-labels {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 16px;
 }
 
 .activity-category {
@@ -2477,12 +2702,18 @@ code {
   font-weight: 800;
 }
 
-.activity-mentor,
-.synthetic-label {
+.activity-mentor {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-bottom: 10px;
+  font-weight: 700;
+}
+
+.activity-listing-labels .synthetic-label {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.86rem;
 }
 
 .activity-mentor svg,
@@ -2495,9 +2726,9 @@ code {
 }
 
 .activity-details {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 18px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 20px;
   margin: 0;
   color: var(--color-muted);
   font-size: 0.94rem;
@@ -2514,29 +2745,91 @@ code {
   margin: 0;
 }
 
-.activity-center .synthetic-label {
-  margin: 12px 0 0;
-  color: var(--color-muted);
-  font-size: 0.86rem;
+.activity-listing-action {
+  display: grid;
+  min-width: 190px;
+  justify-items: end;
+  gap: 12px;
 }
 
-.activity-listing > .primary-button,
-.activity-listing > .secondary-button {
-  flex: none;
-  width: auto;
-  min-width: 112px;
+.activity-listing-action > p {
+  display: grid;
+  justify-items: end;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.activity-listing-action span,
+.activity-listing-action small {
+  color: var(--color-muted);
+  font-size: 0.82rem;
+}
+
+.activity-listing-action strong {
+  font-size: 1.25rem;
+}
+
+.activity-listing-action > .primary-button,
+.activity-listing-action > .secondary-button {
+  min-width: 168px;
 }
 
 @media (max-width: 640px) {
-  .activity-listing {
+  .activity-center-heading {
     align-items: stretch;
     flex-direction: column;
-    gap: 16px;
   }
 
-  .activity-listing > .primary-button,
-  .activity-listing > .secondary-button {
+  .mentor-register-trigger {
     width: 100%;
+  }
+
+  .mentor-registration,
+  .mentor-filters {
+    padding: 18px;
+  }
+
+  .mentor-registration form,
+  .mentor-filters,
+  .mentor-ticket dl,
+  .activity-details {
+    grid-template-columns: 1fr;
+  }
+
+  .mentor-ticket dl div:nth-child(odd),
+  .mentor-ticket dl div:nth-child(even) {
+    padding-right: 0;
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .mentor-browser-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .activity-listing {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .activity-listing-action {
+    width: 100%;
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    justify-items: start;
+  }
+
+  .activity-listing-action > p {
+    justify-items: start;
+  }
+
+  .activity-listing-action > .primary-button,
+  .activity-listing-action > .secondary-button {
+    width: 100%;
+    min-width: 0;
   }
 }
 

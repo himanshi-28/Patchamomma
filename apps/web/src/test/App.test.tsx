@@ -314,7 +314,7 @@ describe("requested Olive Cream UI contract", () => {
     expect(screen.getByLabelText("Your learning wish")).toBeVisible();
   });
 
-  it("keeps Circle and Mentors honest before onboarding is confirmed", async () => {
+  it("keeps Circle honest and labels Mentors as a deterministic demo before onboarding", async () => {
     const user = userEvent.setup();
     render(<App demoMode />);
 
@@ -325,21 +325,22 @@ describe("requested Olive Cream UI contract", () => {
     expect(screen.getByRole("button", { name: "How matching works" })).toBeVisible();
 
     await user.click(screen.getByRole("link", { name: "Mentors" }));
-    expect(screen.getByRole("heading", { level: 1, name: "Learn from lived experience" })).toBeVisible();
-    expect(screen.getByRole("button", { name: "What makes a verified mentor?" })).toBeVisible();
+    expect(screen.getByRole("heading", { level: 1, name: "Find a class that fits your week" })).toBeVisible();
+    expect(screen.getByText("Mentor sessions · deterministic demo")).toBeVisible();
+    expect(screen.getByText("Browse trusted demo mentors by interest, date, and format. Reserve a sample seat without payment.")).toBeVisible();
     expect(screen.queryByText("Anjali Sharma")).not.toBeInTheDocument();
   });
 
-  it("opens the synthetic activity centre from the existing Mentors destination in demo mode", async () => {
+  it("opens mentor discovery directly from the Mentors destination in demo mode", async () => {
     const user = userEvent.setup();
     render(<App demoMode />);
 
     await user.click(screen.getByRole("button", { name: "Continue as Meera" }));
-    await user.click(screen.getByRole("button", { name: "Choose my first hobby" }));
     await user.click(screen.getByRole("link", { name: "Mentors" }));
 
-    expect(screen.getByRole("heading", { level: 1, name: "Activities near you" })).toBeVisible();
+    expect(screen.getByRole("heading", { level: 1, name: "Find a class that fits your week" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Register as a mentor" })).toBeVisible();
     expect(screen.getAllByRole("article")).toHaveLength(6);
-    expect(screen.getByRole("button", { name: "Join Kathak: Begin with rhythm" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Book demo seat for Kathak: Begin with rhythm" })).toBeVisible();
   });
 });
