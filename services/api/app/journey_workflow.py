@@ -410,7 +410,8 @@ will attach trusted IDs, dates, durations, and required flags. Use dignified age
 one useful accessible alternative and activity-specific safety note per entry. Do not diagnose,
 prescribe, make health claims, or add medical, therapeutic, dietary, financial, or hazardous
 instructions. Every learning activity must be specific to the confirmed hobby and advance the
-learner's stated goal.
+learner's stated goal. Give every learning day a different concrete action that builds on an
+earlier day. Do not reuse an instruction sentence on two days, including within the same week.
 """
 
 REVIEW_INSTRUCTION = """
@@ -420,6 +421,8 @@ Pass only when each week has the correct ordered learning, reflection, and rest 
 dignified language, a useful alternative for every entry, and safe activity-specific guidance.
 The server owns dates and durations. Never return reasoning.
 Reject a generic plan that could apply unchanged to a different hobby.
+Reject a plan that repeats an instruction sentence on different learning days or changes only labels
+while keeping the same action.
 """
 
 LOCALIZE_INSTRUCTION = """

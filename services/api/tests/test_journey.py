@@ -151,6 +151,44 @@ def test_eight_week_harp_fallback_advances_without_repeating_generic_days() -> N
     assert "melody" in required_copy
 
 
+def test_every_topic_gets_distinct_daily_copy() -> None:
+    for hobby, goal in (
+        ("Piano", "Learn piano"),
+        ("Kathak", "Perform a short piece"),
+        ("Container gardening", "Grow herbs at home"),
+    ):
+        profile = LearningWishProfile.model_validate(
+            {
+                **PROFILE,
+                "hobby": hobby,
+                "experience": "",
+                "goal": goal,
+                "availability": "30 minutes · 4 days a week",
+                "planWeeks": 8,
+            }
+        )
+
+        journey = build_deterministic_journey(
+            profile=profile,
+            starts_on=date.fromisoformat(STARTS_ON),
+            uid=f"topic-{hobby}",
+        )
+
+        assert len({week.theme.en for week in journey.weeks}) == 8
+        assert all(
+            len({tuple(activity.instructions.en) for activity in week.activities}) == 7
+            for week in journey.weeks
+        )
+        assert all(
+            hobby.casefold()
+            in " ".join([activity.title.en, *activity.instructions.en]).casefold()
+            for week in journey.weeks
+            for activity in week.activities
+            if activity.required
+        )
+        assert f"for {hobby} for {hobby}".casefold() not in journey.model_dump_json().casefold()
+
+
 def test_deterministic_draft_has_exact_bilingual_28_day_structure_and_no_write() -> None:
     client, app = client_with_profile()
 
