@@ -368,6 +368,16 @@ def create_app(
                 detail={"code": "operational_data_unavailable"},
             ) from error
 
+    def read_confirmed_journey(user: AuthenticatedUser) -> JourneyDocument | None:
+        require_operational_identity(user)
+        try:
+            return api.state.journey_repository.get_confirmed_journey(user.uid)
+        except OperationalDataUnavailable as error:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={"code": "operational_data_unavailable"},
+            ) from error
+
     @api.get("/api/v1/auth/session", response_model=AuthenticatedUser)
     async def auth_session(
         user: Annotated[AuthenticatedUser, Depends(require_user)],
@@ -527,6 +537,18 @@ def create_app(
                 fallback_used=journey.provenance.fallback_used,
             ),
         )
+        return journey
+
+    @api.get("/api/v1/journeys/current", response_model=JourneyDocument)
+    async def current_journey(
+        user: Annotated[AuthenticatedUser, Depends(require_user)],
+    ) -> JourneyDocument:
+        journey = read_confirmed_journey(user)
+        if journey is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"code": "confirmed_journey_not_found"},
+            )
         return journey
 
     @api.put("/api/v1/journeys/{journey_id}", response_model=JourneyDocument)

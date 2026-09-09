@@ -21,7 +21,7 @@ import {
 } from "./auth/runtime";
 import sakhiGuide from "./assets/sakhi-guide-maroon.webp";
 import { JourneyFlow } from "./journey/JourneyFlow";
-import { readConfirmedJourneyCache } from "./journey/cache";
+import { cacheConfirmedJourney, readConfirmedJourneyCache } from "./journey/cache";
 import type { JourneyDraft, JourneyGateway } from "./journey/runtime";
 import { OnboardingFlow } from "./onboarding/OnboardingFlow";
 import {
@@ -252,6 +252,7 @@ export function App({
   const [onboardingStarted, setOnboardingStarted] = useState(false);
   const [journeyStarted, setJourneyStarted] = useState(false);
   const [restoredJourney, setRestoredJourney] = useState<JourneyDraft | null>(null);
+  const [journeyRestorePending, setJourneyRestorePending] = useState(true);
   const [matchingConsent, setMatchingConsent] = useState(false);
   const [planWeeks, setPlanWeeks] = useState(4);
   const [voiceAdapter] = useState(() => transcriptAdapter ?? createDeterministicTranscriptAdapter());
@@ -282,15 +283,39 @@ export function App({
       setMatchingConsent(false);
       setPlanWeeks(4);
       setRestoredJourney(null);
+      setJourneyRestorePending(true);
       return;
     }
+    let active = true;
     const cachedJourney = readConfirmedJourneyCache();
-    if (!cachedJourney) return;
-    setRestoredJourney(cachedJourney);
-    setPlanWeeks(cachedJourney.weeks.length);
-    setOnboardingStarted(true);
-    setJourneyStarted(true);
-  }, [authenticated]);
+    if (cachedJourney) {
+      setRestoredJourney(cachedJourney);
+      setPlanWeeks(cachedJourney.weeks.length);
+      setOnboardingStarted(true);
+      setJourneyStarted(true);
+    }
+
+    if (!journeyGateway?.loadConfirmed) {
+      setJourneyRestorePending(false);
+      return () => { active = false; };
+    }
+
+    void journeyGateway.loadConfirmed()
+      .then((savedJourney) => {
+        if (!active || !savedJourney) return;
+        cacheConfirmedJourney(savedJourney);
+        setRestoredJourney(savedJourney);
+        setPlanWeeks(savedJourney.weeks.length);
+        setOnboardingStarted(true);
+        setJourneyStarted(true);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) setJourneyRestorePending(false);
+      });
+
+    return () => { active = false; };
+  }, [authenticated, journeyGateway, session?.uid]);
 
   useLayoutEffect(() => {
     if (!authenticated) return;
@@ -575,7 +600,13 @@ export function App({
             </aside>
           )}
 
-          {destination === "today" && onboardingStarted && journeyStarted && journeyGateway && (
+          {destination === "today" && journeyRestorePending && !restoredJourney && (
+            <section className="journey-state" aria-busy="true">
+              <p role="status">{locale === "en" ? "Loading your saved plan…" : "आपकी सेव की हुई योजना लोड हो रही है…"}</p>
+            </section>
+          )}
+
+          {destination === "today" && (!journeyRestorePending || restoredJourney) && onboardingStarted && journeyStarted && journeyGateway && (
             <JourneyFlow
               locale={locale}
               gateway={journeyGateway}
@@ -586,7 +617,7 @@ export function App({
             />
           )}
 
-          {destination === "today" && onboardingStarted && !journeyStarted && (
+          {destination === "today" && !journeyRestorePending && onboardingStarted && !journeyStarted && (
             <OnboardingFlow
               locale={locale}
               transcriptAdapter={voiceAdapter}
@@ -600,7 +631,7 @@ export function App({
             />
           )}
 
-          {destination === "today" && !onboardingStarted && (
+          {destination === "today" && !journeyRestorePending && !onboardingStarted && (
             <section className="today-view" aria-labelledby="today-heading">
               <div className="next-step-block">
                 <div>

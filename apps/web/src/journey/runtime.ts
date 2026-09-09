@@ -59,6 +59,7 @@ export interface JourneyDraft {
 export interface JourneyGateway {
   create(startsOn: string): Promise<JourneyDraft>;
   confirm(draft: JourneyDraft): Promise<JourneyDraft>;
+  loadConfirmed?(): Promise<JourneyDraft | null>;
 }
 
 interface JourneyApiGatewayOptions {
@@ -131,6 +132,15 @@ export function createJourneyApiGateway({
     }
   };
   return {
+    async loadConfirmed() {
+      const result = await fetcher(`${api}/api/v1/journeys/current`, {
+        method: "GET",
+        headers: await headers(),
+      });
+      if (result.status === 404) return null;
+      if (!result.ok) throw new Error(`Journey request failed with status ${result.status}.`);
+      return result.json() as Promise<JourneyDraft>;
+    },
     async create(startsOn) {
       return request(`${api}/api/v1/journeys`, {
         method: "POST",

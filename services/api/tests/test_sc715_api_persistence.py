@@ -126,7 +126,15 @@ def test_profile_journey_and_recommendation_flow_survives_new_api_instances() ->
     assert journeys.journeys["demo-meera"].status == "confirmed"
 
     third_app = configured_test_app(profiles, journeys, recommendations)
-    match = TestClient(third_app).get(
+    third_client = TestClient(third_app)
+    restored = third_client.get(
+        "/api/v1/journeys/current",
+        headers=AUTH_HEADERS,
+    )
+    assert restored.status_code == 200
+    assert restored.json() == confirmed.json()
+
+    match = third_client.get(
         "/api/v1/recommendations?type=partner",
         headers=AUTH_HEADERS,
     )
@@ -136,6 +144,22 @@ def test_profile_journey_and_recommendation_flow_survives_new_api_instances() ->
     assert not hasattr(third_app.state, "profile_store")
     assert not hasattr(third_app.state, "journey_store")
     assert not hasattr(third_app.state, "matching_dataset")
+
+
+def test_current_journey_returns_404_when_the_user_has_no_confirmed_plan() -> None:
+    app = configured_test_app(
+        ProfileRepositorySpy(),
+        JourneyRepositorySpy(),
+        RecommendationRepositorySpy(),
+    )
+
+    response = TestClient(app).get(
+        "/api/v1/journeys/current",
+        headers=AUTH_HEADERS,
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"]["code"] == "confirmed_journey_not_found"
 
 
 def test_repository_failure_returns_fixed_503_without_provider_or_learner_detail() -> None:
