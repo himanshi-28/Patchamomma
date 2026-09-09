@@ -66,7 +66,7 @@ class ProfileAnalyticsProperties(AnalyticsModel):
 
 
 class JourneyAnalyticsProperties(AnalyticsModel):
-    journey_schema_version: Literal["1.0.0", "1.1.0"]
+    journey_schema_version: Literal["1.0.0", "1.1.0", "1.2.0"]
     generator: JourneyGenerator
     fallback_used: bool
 

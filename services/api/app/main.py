@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from collections.abc import Callable
 from contextvars import ContextVar
@@ -35,6 +36,7 @@ from .cost_controls import (
 from .journey import (
     JourneyCreateRequest,
     JourneyDocument,
+    attach_video_recommendation,
     build_deterministic_journey,
     validate_journey_for_profile,
 )
@@ -77,6 +79,12 @@ from .quotas import (
     QuotaService,
     QuotaStoreUnavailable,
 )
+from .video_recommendations import (
+    STATUS_MESSAGES,
+    GoogleVideoGuideGenerator,
+    GoogleYouTubeDiscovery,
+    VideoRecommendationService,
+)
 
 trace_id_context: ContextVar[str] = ContextVar("trace_id", default="")
 logger = logging.getLogger("sakhicircle.api")
@@ -94,6 +102,7 @@ def create_app(
     journey_repository: JourneyRepository | None = None,
     recommendation_repository: RecommendationRepository | None = None,
     profile_extractor: ProfileExtractor | None = None,
+    video_recommendation_service: VideoRecommendationService | None = None,
 ) -> FastAPI:
     resolved_settings = settings or Settings()
     api = FastAPI(
@@ -111,7 +120,9 @@ def create_app(
     if any(repository is not None for repository in supplied_repositories) and not all(
         repository is not None for repository in supplied_repositories
     ):
-        raise ValueError("Profile, journey, and recommendation repositories must be supplied together")
+        raise ValueError(
+            "Profile, journey, and recommendation repositories must be supplied together"
+        )
     if all(repository is None for repository in supplied_repositories):
         if resolved_settings.adapter_mode == "deterministic":
             profile_repository = InMemoryProfileRepository()
@@ -212,6 +223,24 @@ def create_app(
             **gemini_client_options,
         )
     api.state.journey_workflow = configured_journey_workflow
+    configured_video_recommendations = video_recommendation_service
+    if configured_video_recommendations is None and resolved_settings.youtube_discovery_enabled:
+        assert resolved_settings.youtube_api_key is not None
+        configured_video_recommendations = VideoRecommendationService(
+            discovery=GoogleYouTubeDiscovery(
+                api_key=resolved_settings.youtube_api_key.get_secret_value(),
+                timeout_seconds=resolved_settings.youtube_timeout_seconds,
+            ),
+            generator=GoogleVideoGuideGenerator(
+                model=resolved_settings.video_guide_gemini_model,
+                timeout_seconds=min(
+                    15,
+                    resolved_settings.video_enrichment_timeout_seconds,
+                ),
+                **gemini_client_options,
+            ),
+        )
+    api.state.video_recommendation_service = configured_video_recommendations
 
     @api.middleware("http")
     async def trace_requests(request: Request, call_next):
@@ -368,6 +397,39 @@ def create_app(
                 detail={"code": "operational_data_unavailable"},
             ) from error
 
+    async def enrich_journey_videos(
+        journey: JourneyDocument,
+        profile: LearningWishProfile,
+        user: AuthenticatedUser,
+        *,
+        idempotency_key: str,
+    ) -> JourneyDocument:
+        recommendation_service = api.state.video_recommendation_service
+        if recommendation_service is None:
+            return journey
+        try:
+            api.state.quota_service.reserve_youtube_search(
+                user.uid,
+                idempotency_key=idempotency_key,
+            )
+        except (QuotaExceeded, QuotaStoreUnavailable):
+            return attach_video_recommendation(
+                journey,
+                status="unavailable",
+                message=STATUS_MESSAGES["unavailable"],
+            )
+        try:
+            return await asyncio.wait_for(
+                recommendation_service.enrich(journey, profile),
+                timeout=resolved_settings.video_enrichment_timeout_seconds,
+            )
+        except TimeoutError:
+            return attach_video_recommendation(
+                journey,
+                status="unavailable",
+                message=STATUS_MESSAGES["unavailable"],
+            )
+
     @api.get("/api/v1/auth/session", response_model=AuthenticatedUser)
     async def auth_session(
         user: Annotated[AuthenticatedUser, Depends(require_user)],
@@ -517,6 +579,13 @@ def create_app(
                     },
                 ) from error
 
+        journey = await enrich_journey_videos(
+            journey,
+            profile,
+            user,
+            idempotency_key=f"{journey.journey_id}:create",
+        )
+
         expose_analytics_receipt(
             response,
             user,
@@ -528,6 +597,77 @@ def create_app(
             ),
         )
         return journey
+
+    @api.get("/api/v1/journeys/current", response_model=JourneyDocument)
+    async def current_journey(
+        user: Annotated[AuthenticatedUser, Depends(require_user)],
+    ) -> JourneyDocument:
+        reserve_general_request(user)
+        require_operational_identity(user)
+        try:
+            journey = api.state.journey_repository.get_confirmed_journey(user.uid)
+        except OperationalDataUnavailable as error:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={"code": "operational_data_unavailable"},
+            ) from error
+        if journey is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"code": "journey_not_found"},
+            )
+        if (
+            api.state.video_recommendation_service is not None
+            and journey.video_recommendation is None
+        ):
+            return attach_video_recommendation(
+                journey,
+                status="unavailable",
+                message=STATUS_MESSAGES["unavailable"],
+            )
+        return journey
+
+    @api.post(
+        "/api/v1/journeys/{journey_id}/video-recommendation",
+        response_model=JourneyDocument,
+    )
+    async def refresh_video_recommendation(
+        journey_id: str,
+        user: Annotated[AuthenticatedUser, Depends(require_user)],
+    ) -> JourneyDocument:
+        reserve_general_request(user)
+        profile = read_profile(user)
+        if profile is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={"code": "confirmed_profile_required"},
+            )
+        try:
+            current = api.state.journey_repository.get_confirmed_journey(user.uid)
+        except OperationalDataUnavailable as error:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={"code": "operational_data_unavailable"},
+            ) from error
+        if current is None or current.journey_id != journey_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"code": "journey_not_found"},
+            )
+        refreshed = await enrich_journey_videos(
+            current,
+            profile,
+            user,
+            idempotency_key=f"{journey_id}:refresh:{uuid4().hex}",
+        )
+        try:
+            api.state.journey_repository.save_confirmed_journey(user.uid, refreshed)
+        except OperationalDataUnavailable as error:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={"code": "operational_data_unavailable"},
+            ) from error
+        return refreshed
 
     @api.put("/api/v1/journeys/{journey_id}", response_model=JourneyDocument)
     async def confirm_journey(

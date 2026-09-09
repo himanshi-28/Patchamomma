@@ -21,7 +21,7 @@ import {
 } from "./auth/runtime";
 import sakhiGuide from "./assets/sakhi-guide-maroon.webp";
 import { JourneyFlow } from "./journey/JourneyFlow";
-import { readConfirmedJourneyCache } from "./journey/cache";
+import { cacheConfirmedJourney, readConfirmedJourneyCache } from "./journey/cache";
 import type { JourneyDraft, JourneyGateway } from "./journey/runtime";
 import { OnboardingFlow } from "./onboarding/OnboardingFlow";
 import {
@@ -312,13 +312,25 @@ export function App({
       setTodayView("today");
       return;
     }
+    let active = true;
+    const showJourney = (journey: JourneyDraft) => {
+      if (!active) return;
+      setRestoredJourney(journey);
+      setPlanWeeks(journey.weeks.length);
+      setOnboardingStarted(true);
+      setJourneyStarted(true);
+    };
     const cachedJourney = readConfirmedJourneyCache();
-    if (!cachedJourney) return;
-    setRestoredJourney(cachedJourney);
-    setPlanWeeks(cachedJourney.weeks.length);
-    setOnboardingStarted(true);
-    setJourneyStarted(true);
-  }, [authenticated]);
+    if (cachedJourney) showJourney(cachedJourney);
+    if (!demoMode && journeyGateway?.loadCurrent) {
+      void journeyGateway.loadCurrent().then((current) => {
+        if (!current) return;
+        cacheConfirmedJourney(current);
+        showJourney(current);
+      }).catch(() => undefined);
+    }
+    return () => { active = false; };
+  }, [authenticated, demoMode, journeyGateway]);
 
   useLayoutEffect(() => {
     if (!authenticated) return;

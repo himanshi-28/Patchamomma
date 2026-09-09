@@ -41,6 +41,21 @@ spec:
               value: gemini-3.7-flash
             - name: SAKHI_JOURNEY_GEMINI_MODEL
               value: gemini-2.5-flash
+            - name: SAKHI_VIDEO_GUIDE_GEMINI_MODEL
+              value: gemini-2.5-flash
+            - name: SAKHI_YOUTUBE_DISCOVERY_ENABLED
+              value: "false"
+            - name: SAKHI_YOUTUBE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sakhi-youtube-data-api-key
+                  key: latest
+            - name: SAKHI_YOUTUBE_TIMEOUT_SECONDS
+              value: "8"
+            - name: SAKHI_VIDEO_ENRICHMENT_TIMEOUT_SECONDS
+              value: "30"
+            - name: SAKHI_PRIVACY_POLICY_URL
+              value: ${PRIVACY_POLICY_URL}
             - name: SAKHI_GEMINI_BACKEND
               value: vertex_ai
             - name: SAKHI_GEMINI_LOCATION

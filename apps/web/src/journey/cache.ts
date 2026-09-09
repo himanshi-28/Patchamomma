@@ -5,6 +5,10 @@ import type {
   JourneyWeek,
   LocalizedInstructions,
   LocalizedText,
+  RecommendedPlaylist,
+  RecommendedVideo,
+  VideoRecommendation,
+  WeeklyVideoGuide,
 } from "./runtime";
 
 export const CONFIRMED_JOURNEY_CACHE_KEY = "sakhicircle-confirmed-journey-cache";
@@ -51,6 +55,122 @@ function isIsoDate(value: unknown): value is string {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const parsed = new Date(`${value}T00:00:00Z`);
   return !Number.isNaN(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === value;
+}
+
+function isIsoTimestamp(value: unknown): value is string {
+  return typeof value === "string" && !Number.isNaN(new Date(value).valueOf());
+}
+
+function exactYouTubeUrl(value: string, kind: "video" | "playlist", id: string): boolean {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "https:"
+      && parsed.hostname === "www.youtube.com"
+      && parsed.pathname === (kind === "video" ? "/watch" : "/playlist")
+      && parsed.searchParams.get(kind === "video" ? "v" : "list") === id;
+  } catch {
+    return false;
+  }
+}
+
+function copyRecommendedVideo(value: unknown): RecommendedVideo | null {
+  const source = asRecord(value);
+  const videoId = nonEmptyString(source?.videoId);
+  const title = nonEmptyString(source?.title);
+  const url = nonEmptyString(source?.url);
+  const defaultLanguage = source?.defaultLanguage === null
+    ? null
+    : nonEmptyString(source?.defaultLanguage);
+  if (!videoId || !/^[A-Za-z0-9_-]{11}$/.test(videoId) || !title || !url
+    || !exactYouTubeUrl(url, "video", videoId)
+    || !Number.isInteger(source?.position) || (source?.position as number) < 0
+    || !Number.isInteger(source?.durationSeconds)
+    || (source?.durationSeconds as number) < 1
+    || (source?.durationSeconds as number) > 10800
+    || (source?.defaultLanguage !== null && !defaultLanguage)
+    || typeof source?.captionsAvailable !== "boolean") return null;
+  return {
+    videoId,
+    title,
+    url,
+    position: source.position as number,
+    durationSeconds: source.durationSeconds as number,
+    defaultLanguage,
+    captionsAvailable: source.captionsAvailable,
+  };
+}
+
+function copyWeeklyVideoGuide(value: unknown): WeeklyVideoGuide | null {
+  const source = asRecord(value);
+  if (!source || !Array.isArray(source.videos) || source.videos.length === 0 || source.videos.length > 8) return null;
+  const videos = source.videos.map(copyRecommendedVideo);
+  const prerequisites = copyInstructions(source.prerequisites);
+  const summary = copyLocalizedText(source.summary);
+  const keyPoints = copyInstructions(source.keyPoints);
+  const whatToExpect = copyLocalizedText(source.whatToExpect);
+  const expectedResult = copyLocalizedText(source.expectedResult);
+  if (videos.includes(null) || !prerequisites || !summary || !keyPoints || !whatToExpect || !expectedResult) return null;
+  return {
+    videos: videos as RecommendedVideo[],
+    prerequisites,
+    summary,
+    keyPoints,
+    whatToExpect,
+    expectedResult,
+  };
+}
+
+function copyRecommendedPlaylist(value: unknown): RecommendedPlaylist | null {
+  const source = asRecord(value);
+  const playlistId = nonEmptyString(source?.playlistId);
+  const title = nonEmptyString(source?.title);
+  const channelTitle = nonEmptyString(source?.channelTitle);
+  const url = nonEmptyString(source?.url);
+  const selectionNote = copyLocalizedText(source?.selectionNote);
+  const sourceNote = copyLocalizedText(source?.sourceNote);
+  const defaultLanguage = source?.defaultLanguage === null
+    ? null
+    : nonEmptyString(source?.defaultLanguage);
+  if (!source || source.provider !== "youtube" || !playlistId || !/^[A-Za-z0-9_-]{12,80}$/.test(playlistId)
+    || !title || !channelTitle || !url || !exactYouTubeUrl(url, "playlist", playlistId)
+    || source.selectionMethod !== "automatic"
+    || !["preferred", "fallback", "unknown"].includes(String(source.languageMatch))
+    || (source.defaultLanguage !== null && !defaultLanguage)
+    || (source.captionsAvailable !== null && typeof source.captionsAvailable !== "boolean")
+    || !Number.isInteger(source.selectedVideoCount) || (source.selectedVideoCount as number) < 1
+    || !Number.isInteger(source.totalVideoCount) || (source.totalVideoCount as number) < (source.selectedVideoCount as number)
+    || !selectionNote || !sourceNote || !isIsoTimestamp(source.fetchedAt)
+    || !isIsoTimestamp(source.expiresAt)
+    || new Date(source.expiresAt as string) <= new Date(source.fetchedAt as string)) return null;
+  return {
+    provider: "youtube",
+    playlistId,
+    title,
+    channelTitle,
+    url,
+    selectionMethod: "automatic",
+    languageMatch: source.languageMatch as RecommendedPlaylist["languageMatch"],
+    defaultLanguage,
+    captionsAvailable: source.captionsAvailable as boolean | null,
+    selectedVideoCount: source.selectedVideoCount as number,
+    totalVideoCount: source.totalVideoCount as number,
+    selectionNote,
+    sourceNote,
+    fetchedAt: source.fetchedAt as string,
+    expiresAt: source.expiresAt as string,
+  };
+}
+
+function copyVideoRecommendation(value: unknown): VideoRecommendation | null {
+  const source = asRecord(value);
+  const message = copyLocalizedText(source?.message);
+  if (!source || source.provider !== "youtube" || !message
+    || !["recommended", "no_match", "unavailable", "not_applicable"].includes(String(source.status))) return null;
+  return {
+    provider: "youtube",
+    status: source.status as VideoRecommendation["status"],
+    message,
+  };
 }
 
 function copyActivity(value: unknown, expectedDay: number): JourneyActivity | null {
@@ -101,24 +221,39 @@ function copyWeek(value: unknown, expectedWeek: number): JourneyWeek | null {
     if (!activity) return null;
     activities.push(activity);
   }
-  return { weekNumber: expectedWeek, theme, outcome, activities };
+  const videoGuide = source.videoGuide === undefined ? undefined : copyWeeklyVideoGuide(source.videoGuide);
+  if (source.videoGuide !== undefined && !videoGuide) return null;
+  return {
+    weekNumber: expectedWeek,
+    theme,
+    outcome,
+    activities,
+    ...(videoGuide ? { videoGuide } : {}),
+  };
 }
 
 function sanitizeConfirmedJourney(value: unknown): JourneyDraft | null {
   const source = asRecord(value);
-  if (!source || (source.schemaVersion !== "1.0.0" && source.schemaVersion !== "1.1.0") || source.status !== "confirmed"
+  if (!source || !["1.0.0", "1.1.0", "1.2.0"].includes(String(source.schemaVersion)) || source.status !== "confirmed"
     || source.timezone !== "Asia/Kolkata" || !isIsoDate(source.startsOn)
     || !Array.isArray(source.languages) || source.languages.length !== 2
     || source.languages[0] !== "en" || source.languages[1] !== "hi"
-    || !Array.isArray(source.weeks) || !SUPPORTED_TIMELINES.has(source.weeks.length)
-    || (source.weeks.length === 4 ? source.schemaVersion !== "1.0.0" : source.schemaVersion !== "1.1.0")) return null;
+    || !Array.isArray(source.weeks) || !SUPPORTED_TIMELINES.has(source.weeks.length)) return null;
 
   const journeyId = nonEmptyString(source.journeyId);
   const title = copyLocalizedText(source.title);
   const summary = copyLocalizedText(source.summary);
   const provenance = asRecord(source.provenance);
   const review = asRecord(source.review);
+  const recommendedPlaylist = source.recommendedPlaylist === undefined
+    ? undefined
+    : copyRecommendedPlaylist(source.recommendedPlaylist);
+  const videoRecommendation = source.videoRecommendation === undefined
+    ? undefined
+    : copyVideoRecommendation(source.videoRecommendation);
   if (!journeyId || !title || !summary || !provenance || !review) return null;
+  if (source.recommendedPlaylist !== undefined && !recommendedPlaylist) return null;
+  if (source.videoRecommendation !== undefined && !videoRecommendation) return null;
 
   const generator = typeof provenance.generator === "string" && GENERATORS.has(provenance.generator)
     ? provenance.generator as JourneyDraft["provenance"]["generator"]
@@ -143,9 +278,19 @@ function sanitizeConfirmedJourney(value: unknown): JourneyDraft | null {
     if (!week) return null;
     weeks.push(week);
   }
+  const recommended = videoRecommendation?.status === "recommended";
+  const expectedSchema = videoRecommendation ? "1.2.0" : weeks.length === 4 ? "1.0.0" : "1.1.0";
+  if (source.schemaVersion !== expectedSchema
+    || recommended !== Boolean(recommendedPlaylist)
+    || recommended !== weeks.every((week) => Boolean(week.videoGuide))) return null;
+  if (recommendedPlaylist) {
+    const videoIds = weeks.flatMap((week) => week.videoGuide?.videos.map((video) => video.videoId) ?? []);
+    if (videoIds.length !== recommendedPlaylist.selectedVideoCount
+      || new Set(videoIds).size !== videoIds.length) return null;
+  }
 
   return {
-    schemaVersion: source.schemaVersion,
+    schemaVersion: source.schemaVersion as JourneyDraft["schemaVersion"],
     journeyId,
     status: "confirmed",
     startsOn: source.startsOn,
@@ -164,6 +309,8 @@ function sanitizeConfirmedJourney(value: unknown): JourneyDraft | null {
       contractVersion: "safety-accessibility-v1",
       passedChecks: [...PASSED_CHECKS],
     },
+    ...(videoRecommendation ? { videoRecommendation } : {}),
+    ...(recommendedPlaylist ? { recommendedPlaylist } : {}),
     weeks,
   };
 }
@@ -200,7 +347,28 @@ export function readConfirmedJourneyCache(): JourneyDraft | null {
     if (!stored) return null;
     const envelope = asRecord(JSON.parse(stored));
     if (envelope?.version !== CACHE_VERSION) return null;
-    return sanitizeConfirmedJourney(envelope.journey);
+    const rawJourney = asRecord(envelope.journey);
+    const rawPlaylist = asRecord(rawJourney?.recommendedPlaylist);
+    if (rawJourney && isIsoTimestamp(rawPlaylist?.expiresAt)
+      && new Date(rawPlaylist.expiresAt as string) <= new Date()) {
+      const writtenOnly: Record<string, unknown> = {
+        ...rawJourney,
+        schemaVersion: Array.isArray(rawJourney.weeks) && rawJourney.weeks.length === 4 ? "1.0.0" : "1.1.0",
+        weeks: Array.isArray(rawJourney.weeks)
+          ? rawJourney.weeks.map((week) => {
+            const copy = { ...(asRecord(week) ?? {}) };
+            delete copy.videoGuide;
+            return copy;
+          })
+          : rawJourney.weeks,
+      };
+      delete writtenOnly.videoRecommendation;
+      delete writtenOnly.recommendedPlaylist;
+      const safeWrittenPlan = sanitizeConfirmedJourney(writtenOnly);
+      if (safeWrittenPlan) cacheConfirmedJourney(safeWrittenPlan);
+      return safeWrittenPlan;
+    }
+    return sanitizeConfirmedJourney(rawJourney);
   } catch {
     return null;
   }

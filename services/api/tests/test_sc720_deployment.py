@@ -29,6 +29,7 @@ LIVE_ORIGINS = [
 ]
 PREVIEW_ORIGIN = f"https://{PROJECT_ID}--sc720-preview-a1b2c3.web.app"
 NOW = datetime(2026, 9, 3, 13, 0, tzinfo=UTC)
+PRIVACY_POLICY_URL = "https://www.sakhicircle.example/privacy"
 
 
 def _environment(manifest: dict) -> dict[str, object]:
@@ -47,6 +48,7 @@ def test_renderer_binds_the_immutable_image_and_exact_production_origins() -> No
         firebase_app_id=FIREBASE_APP_ID,
         analytics_hmac_secret_version="1",
         allowed_origins=[*LIVE_ORIGINS, PREVIEW_ORIGIN],
+        privacy_policy_url=PRIVACY_POLICY_URL,
     )
     manifest = yaml.safe_load(rendered)
     container = manifest["spec"]["template"]["spec"]["containers"][0]
@@ -60,6 +62,7 @@ def test_renderer_binds_the_immutable_image_and_exact_production_origins() -> No
     assert environment["SAKHI_ANALYTICS_TASK_AUDIENCE"] == CLOUD_RUN_URL
     assert environment["SAKHI_ANALYTICS_HMAC_SECRET_VERSIONS"] == '["1"]'
     assert environment["SAKHI_ANALYTICS_CURRENT_HMAC_SECRET_VERSION"] == "1"
+    assert environment["SAKHI_PRIVACY_POLICY_URL"] == PRIVACY_POLICY_URL
     assert json.loads(environment["SAKHI_ALLOWED_ORIGINS"]) == [
         *LIVE_ORIGINS,
         PREVIEW_ORIGIN,
@@ -74,6 +77,7 @@ def test_renderer_binds_the_immutable_image_and_exact_production_origins() -> No
         ("firebase_app_id", "1:wrong:web:app", "Firebase app"),
         ("analytics_hmac_secret_version", "latest", "secret version"),
         ("allowed_origins", ["https://example.com"], "Hosting origin"),
+        ("privacy_policy_url", "http://localhost/privacy", "privacy policy"),
     ],
 )
 def test_renderer_rejects_mutable_or_cross_project_inputs(
@@ -86,6 +90,7 @@ def test_renderer_rejects_mutable_or_cross_project_inputs(
         "firebase_app_id": FIREBASE_APP_ID,
         "analytics_hmac_secret_version": "1",
         "allowed_origins": LIVE_ORIGINS,
+        "privacy_policy_url": PRIVACY_POLICY_URL,
     }
     inputs[field] = value
 

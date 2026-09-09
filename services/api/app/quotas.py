@@ -112,9 +112,7 @@ def _plan_reservation(
     now: datetime,
 ) -> dict[str, object]:
     document = dict(raw or {})
-    idempotency_hash = (
-        _digest(reservation.idempotency_key) if reservation.idempotency_key else None
-    )
+    idempotency_hash = _digest(reservation.idempotency_key) if reservation.idempotency_key else None
     common = {
         "schemaVersion": QUOTA_COUNTER_SCHEMA_VERSION,
         "quotaName": reservation.quota_name,
@@ -138,8 +136,7 @@ def _plan_reservation(
         assert reservation.window_seconds is not None
         raw_timestamps = document.get("acceptedAt", [])
         if not isinstance(raw_timestamps, list) or any(
-            not isinstance(value, datetime) or value.tzinfo is None
-            for value in raw_timestamps
+            not isinstance(value, datetime) or value.tzinfo is None for value in raw_timestamps
         ):
             raise QuotaStoreUnavailable("Persistent rolling counter is invalid")
         cutoff = now - timedelta(seconds=reservation.window_seconds)
@@ -303,6 +300,30 @@ class QuotaService:
                     window_seconds=60,
                     failure_code="protected_api_quota_exceeded",
                 )
+            ]
+        )
+
+    def reserve_youtube_search(self, subject_key: str, *, idempotency_key: str) -> None:
+        self._reserve(
+            [
+                QuotaReservation(
+                    quota_name="youtube_search",
+                    scope_kind="subject",
+                    scope_key=subject_key,
+                    limit=5,
+                    window_kind="india_day",
+                    idempotency_key=idempotency_key,
+                    failure_code="youtube_subject_daily_quota_exceeded",
+                ),
+                QuotaReservation(
+                    quota_name="youtube_search",
+                    scope_kind="project",
+                    scope_key="sakhicircle-youtube-project",
+                    limit=20,
+                    window_kind="india_day",
+                    idempotency_key=idempotency_key,
+                    failure_code="youtube_project_daily_quota_exceeded",
+                ),
             ]
         )
 

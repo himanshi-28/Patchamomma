@@ -3,14 +3,14 @@ from __future__ import annotations
 import os
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from threading import Lock
 from typing import Any, Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .config import Settings
-from .journey import JourneyDocument
+from .journey import JourneyDocument, strip_video_recommendation
 from .profile import LearningWishProfile
 from .synthetic_data import DATASET_VERSION, SyntheticDataset, generate_synthetic_dataset
 
@@ -20,6 +20,8 @@ MATCHING_DATASET_RECORD_VERSION = "matching-dataset-v1.0.0"
 PROFILE_COLLECTION = "learner_profiles_v1"
 JOURNEY_COLLECTION = "learner_journeys_v1"
 RECOMMENDATION_COLLECTION = "recommendation_catalog_v1"
+YOUTUBE_RECOMMENDATION_COLLECTION = "youtube_recommendations_v1"
+YOUTUBE_RECOMMENDATION_RECORD_VERSION = "youtube-recommendation-v1.0.0"
 
 
 class OperationalDataUnavailable(RuntimeError):
@@ -85,6 +87,59 @@ class _JourneyRecord(_Record):
         return _utc_timestamp(value)
 
 
+class _YouTubeRecommendationRecord(_Record):
+    record_version: Literal["youtube-recommendation-v1.0.0"] = Field(alias="recordVersion")
+    journey_id: str = Field(alias="journeyId")
+    enrichment: dict[str, object]
+    expires_at: datetime = Field(alias="expiresAt")
+
+    @field_validator("expires_at")
+    @classmethod
+    def timestamp_is_utc(cls, value: datetime) -> datetime:
+        return _utc_timestamp(value)
+
+
+def _video_enrichment(
+    journey: JourneyDocument,
+    *,
+    now: datetime,
+) -> tuple[dict[str, object], datetime] | None:
+    if journey.video_recommendation is None:
+        return None
+    payload = journey.model_dump(by_alias=True, mode="json")
+    enrichment: dict[str, object] = {
+        "videoRecommendation": payload["videoRecommendation"],
+        "recommendedPlaylist": payload.get("recommendedPlaylist"),
+        "weeklyGuides": [week.get("videoGuide") for week in payload["weeks"]],
+    }
+    expires_at = (
+        journey.recommended_playlist.expires_at
+        if journey.recommended_playlist is not None
+        else _utc_timestamp(now) + timedelta(days=1)
+    )
+    return enrichment, expires_at
+
+
+def _join_video_enrichment(
+    journey: JourneyDocument,
+    record: _YouTubeRecommendationRecord,
+) -> JourneyDocument:
+    if record.journey_id != journey.journey_id:
+        return journey
+    payload = journey.model_dump(by_alias=True)
+    payload["schemaVersion"] = "1.2.0"
+    payload["videoRecommendation"] = record.enrichment["videoRecommendation"]
+    playlist = record.enrichment.get("recommendedPlaylist")
+    if playlist is not None:
+        payload["recommendedPlaylist"] = playlist
+    weekly_guides = record.enrichment.get("weeklyGuides", [])
+    if isinstance(weekly_guides, list):
+        for week, guide in zip(payload["weeks"], weekly_guides, strict=False):
+            if guide is not None:
+                week["videoGuide"] = guide
+    return JourneyDocument.model_validate(payload)
+
+
 class _MatchingDatasetRecord(_Record):
     record_version: Literal["matching-dataset-v1.0.0"] = Field(alias="recordVersion")
     dataset: SyntheticDataset
@@ -131,18 +186,40 @@ class InMemoryProfileRepository:
 class InMemoryJourneyRepository:
     """Deterministic local-only confirmed-journey repository."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, clock: Callable[[], datetime] | None = None) -> None:
         self.journeys: dict[str, JourneyDocument] = {}
+        self.video_recommendations: dict[str, _YouTubeRecommendationRecord] = {}
+        self._clock = clock or (lambda: datetime.now(UTC))
 
     def save_confirmed_journey(self, uid: str, journey: JourneyDocument) -> None:
         _document_path(JOURNEY_COLLECTION, uid)
         if journey.status != "confirmed":
             raise ValueError("Only a confirmed journey may be persisted")
-        self.journeys[uid] = journey
+        self.journeys[uid] = strip_video_recommendation(journey)
+        enrichment = _video_enrichment(journey, now=self._clock())
+        if enrichment is None:
+            self.video_recommendations.pop(uid, None)
+        else:
+            payload, expires_at = enrichment
+            self.video_recommendations[uid] = _YouTubeRecommendationRecord(
+                recordVersion=YOUTUBE_RECOMMENDATION_RECORD_VERSION,
+                journeyId=journey.journey_id,
+                enrichment=payload,
+                expiresAt=expires_at,
+            )
 
     def get_confirmed_journey(self, uid: str) -> JourneyDocument | None:
         _document_path(JOURNEY_COLLECTION, uid)
-        return self.journeys.get(uid)
+        journey = self.journeys.get(uid)
+        if journey is None:
+            return None
+        recommendation = self.video_recommendations.get(uid)
+        if recommendation is None:
+            return journey
+        if _utc_timestamp(self._clock()) >= recommendation.expires_at:
+            self.video_recommendations.pop(uid, None)
+            return journey
+        return _join_video_enrichment(journey, recommendation)
 
 
 class InMemoryRecommendationRepository:
@@ -206,11 +283,23 @@ class FirestoreJourneyRepository:
         path = _document_path(JOURNEY_COLLECTION, uid)
         record = {
             "recordVersion": JOURNEY_RECORD_VERSION,
-            "journey": journey.model_dump(by_alias=True, mode="json"),
+            "journey": strip_video_recommendation(journey).model_dump(by_alias=True, mode="json"),
             "confirmedAt": _utc_timestamp(self._clock()),
         }
         try:
             self.client.document(path).set(record)
+            enrichment = _video_enrichment(journey, now=self._clock())
+            recommendation_path = _document_path(YOUTUBE_RECOMMENDATION_COLLECTION, uid)
+            if enrichment is not None:
+                payload, expires_at = enrichment
+                self.client.document(recommendation_path).set(
+                    {
+                        "recordVersion": YOUTUBE_RECOMMENDATION_RECORD_VERSION,
+                        "journeyId": journey.journey_id,
+                        "enrichment": payload,
+                        "expiresAt": expires_at,
+                    }
+                )
         except Exception as error:
             raise OperationalDataUnavailable("operational data unavailable") from error
 
@@ -220,7 +309,17 @@ class FirestoreJourneyRepository:
         if raw is None:
             return None
         try:
-            return _JourneyRecord.model_validate(raw).journey
+            journey = _JourneyRecord.model_validate(raw).journey
+            recommendation_path = _document_path(YOUTUBE_RECOMMENDATION_COLLECTION, uid)
+            recommendation_raw = _snapshot_value(
+                self.client.document(recommendation_path), missing_allowed=True
+            )
+            if recommendation_raw is None:
+                return journey
+            recommendation = _YouTubeRecommendationRecord.model_validate(recommendation_raw)
+            if _utc_timestamp(self._clock()) >= recommendation.expires_at:
+                return journey
+            return _join_video_enrichment(journey, recommendation)
         except Exception as error:
             raise OperationalDataUnavailable("operational data unavailable") from error
 

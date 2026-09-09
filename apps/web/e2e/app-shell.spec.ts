@@ -80,6 +80,90 @@ const makeJourneyFixture = () => {
   };
 };
 
+const makeVideoJourneyFixture = () => {
+  const journey = makeJourneyFixture();
+  const videos = [
+    ["9Pp3cOAcOyQ", "Episode 1 · Pranam and Tatkar", 19],
+    ["ZQyoV07o2z8", "Episode 2 · Tatkar at Thaah and Dugun", 29],
+    ["uix_YqgL9oY", "Episode 3 · Tatkar at Thaah, Dugun and Chaugun", 30],
+    ["m5r3GlXRAUE", "Episode 4 · Tatkar through Aathgun", 28],
+    ["QqIyhTXnwLU", "Episode 5 · Tatkar and Hastak", 27],
+    ["MaYo3TiEYtE", "Episode 6 · Tatkar Palte and Hastak", 11],
+    ["NOyh-Ufl9HE", "Episode 7 · Aamad, Salami, Tatkar Palte and Hastak", 22],
+    ["qe1cZs7GmwI", "Episode 8 · Asamyukta Mudras", 28],
+  ] as const;
+  return {
+    ...journey,
+    schemaVersion: "1.2.0",
+    title: { en: "Four steady weeks for Kathak", hi: "कथक के लिए चार सहज सप्ताह" },
+    videoRecommendation: {
+      status: "recommended",
+      provider: "youtube",
+      message: {
+        en: "A verified YouTube course has been divided across your learning weeks.",
+        hi: "एक सत्यापित YouTube पाठ्यक्रम आपके सीखने के सप्ताहों में बाँटा गया है।",
+      },
+    },
+    recommendedPlaylist: {
+      provider: "youtube",
+      playlistId: "PLBAnl0RYZD0f7tY_AlfoD4cllILauhJJX",
+      title: "Learn Kathak with us | Sangeet Pravah World",
+      channelTitle: "Sangeet Pravah World",
+      url: "https://www.youtube.com/playlist?list=PLBAnl0RYZD0f7tY_AlfoD4cllILauhJJX",
+      selectionMethod: "automatic",
+      languageMatch: "preferred",
+      defaultLanguage: "hi",
+      captionsAvailable: true,
+      selectedVideoCount: 8,
+      totalVideoCount: 25,
+      selectionNote: {
+        en: "Eight sequential beginner lessons selected from this 25-video playlist and divided across your four weeks.",
+        hi: "इस 25-वीडियो प्लेलिस्ट से शुरुआती स्तर के आठ क्रमिक पाठ चुनकर आपके चार सप्ताह में बाँटे गए हैं।",
+      },
+      sourceNote: {
+        en: "YouTube controls video availability, captions, ads, and data use. Your written plan still works if a video is unavailable.",
+        hi: "वीडियो की उपलब्धता, कैप्शन, विज्ञापन और डेटा उपयोग YouTube नियंत्रित करता है। कोई वीडियो उपलब्ध न हो, तब भी आपकी लिखित योजना काम करेगी।",
+      },
+      fetchedAt: "2026-09-09T10:00:00Z",
+      expiresAt: "2026-10-08T10:00:00Z",
+    },
+    weeks: journey.weeks.map((week, weekIndex) => ({
+      ...week,
+      videoGuide: {
+        videos: videos.slice(weekIndex * 2, weekIndex * 2 + 2).map(([videoId, title, durationMinutes], videoIndex) => ({
+          videoId,
+          title,
+          position: weekIndex * 2 + videoIndex,
+          durationSeconds: durationMinutes * 60,
+          defaultLanguage: "hi",
+          captionsAvailable: true,
+          url: `https://www.youtube.com/watch?v=${videoId}`,
+        })),
+        prerequisites: {
+          en: ["No prior Kathak experience is needed.", "Keep a clear practice space and stable support nearby."],
+          hi: ["कथक का पहले से अनुभव ज़रूरी नहीं है।", "अभ्यास की जगह खाली रखें और पास में स्थिर सहारा रखें।"],
+        },
+        summary: {
+          en: "Watch this week's two sequential beginner lessons.",
+          hi: "इस सप्ताह के दो क्रमिक शुरुआती पाठ देखें।",
+        },
+        keyPoints: {
+          en: ["Watch once before practising.", "Choose clarity and comfort before speed."],
+          hi: ["अभ्यास से पहले एक बार देखें।", "गति से पहले स्पष्टता और सुविधा चुनें।"],
+        },
+        whatToExpect: {
+          en: "Coordination may feel unfamiliar. Pause and replay short sections.",
+          hi: "तालमेल नया लग सकता है। छोटे हिस्सों को रोककर दोबारा देखें।",
+        },
+        expectedResult: {
+          en: "Repeat the demonstrated beginner sequence slowly at your comfortable pace.",
+          hi: "दिखाए गए शुरुआती क्रम को अपनी सहज गति से धीरे-धीरे दोहराएँ।",
+        },
+      },
+    })),
+  };
+};
+
 const makeRecommendationFixture = () => ({
   contractVersion: "matching-v1.0.0",
   recommendationType: "mentor",
@@ -561,11 +645,58 @@ test("plan creation is shown before the plan-ready screen", async ({ page }) => 
   await page.getByRole("checkbox", { name: /I agree SakhiCircle may use/ }).check();
   await page.getByRole("button", { name: "Confirm and create my 4-week plan" }).click();
 
-  await expect(page.getByText("Creating your reviewed four-week plan…")).toBeVisible();
+  await expect(page.getByText("Creating your reviewed four-week plan and finding a suitable video course…")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Your plan is ready" })).toHaveCount(0);
   releaseJourney?.();
   await expect(page.getByRole("heading", { name: "Your plan is ready" })).toBeFocused();
-  await expect(page.getByText("Creating your reviewed four-week plan…")).toHaveCount(0);
+  await expect(page.getByText("Creating your reviewed four-week plan and finding a suitable video course…")).toHaveCount(0);
+});
+
+test("a recommended YouTube playlist is divided into readable weekly video guidance", async ({ page }) => {
+  await page.route("**/api/v1/profile", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: "saved" }) });
+  });
+  await page.route(/\/api\/v1\/journeys$/, async (route) => {
+    const headers = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Firebase-AppCheck",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+    };
+    if (route.request().method() === "OPTIONS") {
+      await route.fulfill({ status: 204, headers });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      headers,
+      body: JSON.stringify(makeVideoJourneyFixture()),
+    });
+  });
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "Continue as Meera" }).click();
+  await page.getByRole("button", { name: "Choose my first hobby" }).click();
+  await page.getByRole("textbox", { name: "Your learning wish" }).fill(
+    "I want to restart Kathak. I can practise for 30 minutes, four days a week. I prefer Hindi, larger text, seated alternatives, and a small online group in Pune.",
+  );
+  await page.getByRole("button", { name: "Review my details" }).click();
+  const permissionToggle = page.getByRole("button", { name: "Preferences & permission" });
+  if (await permissionToggle.isVisible()) await permissionToggle.click();
+  await page.getByRole("checkbox", { name: /I agree SakhiCircle may use/ }).check();
+  await page.getByRole("button", { name: "Confirm and create my 4-week plan" }).click();
+  await page.getByRole("button", { name: "Review my four-week plan" }).click();
+
+  await expect(page.getByRole("heading", { name: "Recommended YouTube playlist" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open complete playlist on YouTube" })).toHaveAttribute(
+    "href",
+    "https://www.youtube.com/playlist?list=PLBAnl0RYZD0f7tY_AlfoD4cllILauhJJX",
+  );
+  await expect(page.getByRole("heading", { name: "Video lessons for this week" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Episode 1 · Pranam and Tatkar/ })).toBeVisible();
+  await expect(page.getByText("Before you watch")).toBeVisible();
+  await expect(page.getByText("Expected result")).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
 });
 
 test("bilingual journey stays unsaved through review and persists only the confirmed edits", async ({ page }) => {

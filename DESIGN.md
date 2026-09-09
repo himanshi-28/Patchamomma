@@ -196,6 +196,10 @@ The unauthenticated screen keeps the SakhiCircle logo, concise welcome copy, pas
 
 The signature booking confirmation uses a familiar ticket structure and lists mentor, topic, language, date, time, payment status, and joining instructions in that order. It remains readable without color and never exposes card details.
 
+### Video-guided Week
+
+An automatically discovered playlist appears as a clearly labelled source block with its channel, language and caption confirmation, selection explanation, external-link action, API-data date, and YouTube privacy note. Inside an expanded week, assigned videos appear before daily practice. The week then exposes preparation, “Learning overview—not a transcript summary,” key points, what to expect, and expected result in that order. Video rows use familiar play and external-link cues, open in a new tab, and never autoplay or replace the written activities. A calm status card preserves the written plan when no suitable course is found or discovery is unavailable, and a saved plan offers an explicit refresh action.
+
 ## 6. Do's and Don'ts
 
 ### Do:

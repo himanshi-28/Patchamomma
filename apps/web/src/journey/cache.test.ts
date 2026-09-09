@@ -87,6 +87,120 @@ describe("confirmed journey offline cache", () => {
     expect(cacheConfirmedJourney({ ...sixWeekJourney, schemaVersion: "1.0.0" })).toBe(false);
   });
 
+  it("stores reviewed video guidance offline and rejects non-YouTube links", () => {
+    const journey = makeConfirmedJourney();
+    const videos = journey.weeks.map((_, index) => ({
+      videoId: `${String(index + 1).padStart(11, "0")}`,
+      title: `Kathak lesson ${index + 1}`,
+      url: `https://www.youtube.com/watch?v=${String(index + 1).padStart(11, "0")}`,
+      position: index,
+      durationSeconds: 20 * 60,
+      defaultLanguage: "hi",
+      captionsAvailable: true,
+    }));
+    const videoJourney: JourneyDraft = {
+      ...journey,
+      schemaVersion: "1.2.0",
+      videoRecommendation: {
+        status: "recommended",
+        provider: "youtube",
+        message: bilingual("A verified course is ready.", "एक सत्यापित पाठ्यक्रम तैयार है।"),
+      },
+      recommendedPlaylist: {
+        provider: "youtube",
+        playlistId: "PLBAnl0RYZD0f7tY_AlfoD4cllILauhJJX",
+        title: "Learn Kathak with us",
+        channelTitle: "Sangeet Pravah World",
+        url: "https://www.youtube.com/playlist?list=PLBAnl0RYZD0f7tY_AlfoD4cllILauhJJX",
+        selectionMethod: "automatic",
+        languageMatch: "preferred",
+        defaultLanguage: "hi",
+        captionsAvailable: true,
+        selectedVideoCount: 4,
+        totalVideoCount: 25,
+        selectionNote: bilingual("Four selected lessons.", "चार चुने हुए पाठ।"),
+        sourceNote: bilingual("YouTube controls availability.", "उपलब्धता YouTube नियंत्रित करता है।"),
+        fetchedAt: "2099-09-09T10:00:00Z",
+        expiresAt: "2099-10-08T10:00:00Z",
+      },
+      weeks: journey.weeks.map((week, index) => ({
+        ...week,
+        videoGuide: {
+          videos: [videos[index]],
+          prerequisites: { en: ["Clear some space."], hi: ["कुछ जगह खाली रखें।"] },
+          summary: bilingual("Practise one lesson.", "एक पाठ का अभ्यास करें।"),
+          keyPoints: { en: ["Move comfortably."], hi: ["सहजता से करें।"] },
+          whatToExpect: bilingual("Coordination may feel new.", "तालमेल नया लग सकता है।"),
+          expectedResult: bilingual("Repeat one short sequence.", "एक छोटा क्रम दोहराएँ।"),
+        },
+      })),
+    };
+
+    expect(cacheConfirmedJourney(videoJourney)).toBe(true);
+    expect(readConfirmedJourneyCache()).toEqual(videoJourney);
+    expect(cacheConfirmedJourney({
+      ...videoJourney,
+      recommendedPlaylist: { ...videoJourney.recommendedPlaylist!, url: "https://example.com/playlist" },
+    })).toBe(false);
+  });
+
+  it("expires YouTube metadata on access while retaining the written offline plan", () => {
+    const journey = makeConfirmedJourney();
+    const videoId = "00000000001";
+    const expired: JourneyDraft = {
+      ...journey,
+      schemaVersion: "1.2.0",
+      videoRecommendation: {
+        status: "recommended",
+        provider: "youtube",
+        message: bilingual("A verified course is ready.", "एक सत्यापित पाठ्यक्रम तैयार है।"),
+      },
+      recommendedPlaylist: {
+        provider: "youtube",
+        playlistId: "PLexpiredCourse123",
+        title: "Expired course",
+        channelTitle: "Teacher",
+        url: "https://www.youtube.com/playlist?list=PLexpiredCourse123",
+        selectionMethod: "automatic",
+        languageMatch: "preferred",
+        defaultLanguage: "en",
+        captionsAvailable: true,
+        selectedVideoCount: 4,
+        totalVideoCount: 4,
+        selectionNote: bilingual("Four lessons.", "चार पाठ।"),
+        sourceNote: bilingual("YouTube metadata.", "YouTube मेटाडेटा।"),
+        fetchedAt: "2020-01-01T00:00:00Z",
+        expiresAt: "2020-01-30T00:00:00Z",
+      },
+      weeks: journey.weeks.map((week, position) => ({
+        ...week,
+        videoGuide: {
+          videos: [{
+            videoId: `${videoId.slice(0, -1)}${position + 1}`,
+            title: `Lesson ${position + 1}`,
+            url: `https://www.youtube.com/watch?v=${videoId.slice(0, -1)}${position + 1}`,
+            position,
+            durationSeconds: 600,
+            defaultLanguage: "en",
+            captionsAvailable: true,
+          }],
+          prerequisites: { en: ["Prepare."], hi: ["तैयार रहें।"] },
+          summary: bilingual("Learn.", "सीखें।"),
+          keyPoints: { en: ["Notice."], hi: ["ध्यान दें।"] },
+          whatToExpect: bilingual("A first step.", "पहला कदम।"),
+          expectedResult: bilingual("Show it.", "करके दिखाएँ।"),
+        },
+      })),
+    };
+
+    expect(cacheConfirmedJourney(expired)).toBe(true);
+    const restored = readConfirmedJourneyCache();
+    expect(restored?.schemaVersion).toBe("1.0.0");
+    expect(restored?.videoRecommendation).toBeUndefined();
+    expect(restored?.recommendedPlaylist).toBeUndefined();
+    expect(restored?.weeks).toHaveLength(4);
+  });
+
   it("rejects drafts and strips fields outside the journey contract", () => {
     const draft = { ...makeConfirmedJourney(), status: "draft" as const };
     expect(cacheConfirmedJourney(draft)).toBe(false);

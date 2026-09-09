@@ -14,6 +14,12 @@ class Settings(BaseSettings):
     paid_api_calls_enabled: bool = False
     gemini_model: str = "gemini-3.7-flash"
     journey_gemini_model: str = "gemini-2.5-flash"
+    video_guide_gemini_model: str = "gemini-2.5-flash"
+    youtube_discovery_enabled: bool = False
+    youtube_api_key: SecretStr | None = None
+    youtube_timeout_seconds: float = Field(default=8, gt=0, le=15)
+    video_enrichment_timeout_seconds: float = Field(default=30, gt=0, le=30)
+    privacy_policy_url: str | None = None
     gemini_backend: Literal["developer_api", "vertex_ai"] = "developer_api"
     gemini_location: str = "global"
     gemini_api_key: SecretStr | None = None
@@ -42,6 +48,14 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def fail_closed_in_production(self) -> "Settings":
+        if self.youtube_discovery_enabled and self.youtube_api_key is None:
+            raise ValueError("SAKHI_YOUTUBE_API_KEY is required when YouTube discovery is enabled")
+        if (
+            self.app_env == "production"
+            and self.youtube_discovery_enabled
+            and not self.privacy_policy_url
+        ):
+            raise ValueError("SAKHI_PRIVACY_POLICY_URL is required for YouTube discovery")
         if self.app_env != "production" and self.paid_api_calls_enabled:
             raise ValueError("Paid API calls cannot be enabled outside production")
         if self.app_env == "production" and self.demo_mode:

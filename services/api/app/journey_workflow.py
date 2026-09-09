@@ -284,7 +284,9 @@ def _validated_ai_document(
     return validate_journey_for_profile(document, profile)
 
 
-def _fallback_reason(review_code: ReviewCode) -> Literal[
+def _fallback_reason(
+    review_code: ReviewCode,
+) -> Literal[
     "validation_failed_twice",
     "review_failed_twice",
     "localization_failed_twice",

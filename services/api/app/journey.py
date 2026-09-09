@@ -1,6 +1,7 @@
 import re
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Literal
+from urllib.parse import parse_qs, urlparse
 from uuid import NAMESPACE_URL, uuid5
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -113,15 +114,113 @@ class JourneyActivity(StrictModel):
         return self
 
 
+class RecommendedVideo(StrictModel):
+    video_id: str = Field(alias="videoId", pattern=r"^[A-Za-z0-9_-]{11}$")
+    title: str = Field(min_length=1, max_length=220)
+    url: str = Field(min_length=1, max_length=500)
+    position: int = Field(ge=0)
+    duration_seconds: int = Field(alias="durationSeconds", ge=1, le=10800)
+    default_language: str | None = Field(default=None, alias="defaultLanguage", max_length=35)
+    captions_available: bool = Field(alias="captionsAvailable")
+
+    @field_validator("url")
+    @classmethod
+    def youtube_watch_url(cls, value: str) -> str:
+        parsed = urlparse(value)
+        video_id = parse_qs(parsed.query).get("v", [None])[0]
+        if (
+            parsed.scheme != "https"
+            or parsed.netloc != "www.youtube.com"
+            or parsed.path != "/watch"
+            or video_id is None
+            or not re.fullmatch(r"[A-Za-z0-9_-]{11}", video_id)
+        ):
+            raise ValueError("Recommended videos must use a YouTube watch URL")
+        return value
+
+    @model_validator(mode="after")
+    def url_matches_video(self) -> "RecommendedVideo":
+        video_id = parse_qs(urlparse(self.url).query).get("v", [None])[0]
+        if video_id != self.video_id:
+            raise ValueError("YouTube video URL must match its video identifier")
+        return self
+
+
+class WeeklyVideoGuide(StrictModel):
+    videos: list[RecommendedVideo] = Field(min_length=1, max_length=8)
+    prerequisites: LocalizedInstructions
+    summary: LocalizedText
+    key_points: LocalizedInstructions = Field(alias="keyPoints")
+    what_to_expect: LocalizedText = Field(alias="whatToExpect")
+    expected_result: LocalizedText = Field(alias="expectedResult")
+
+
+class RecommendedPlaylist(StrictModel):
+    provider: Literal["youtube"]
+    playlist_id: str = Field(alias="playlistId", pattern=r"^[A-Za-z0-9_-]{12,80}$")
+    title: str = Field(min_length=1, max_length=220)
+    channel_title: str = Field(alias="channelTitle", min_length=1, max_length=120)
+    url: str = Field(min_length=1, max_length=500)
+    selection_method: Literal["automatic"] = Field(alias="selectionMethod")
+    language_match: Literal["preferred", "fallback", "unknown"] = Field(alias="languageMatch")
+    default_language: str | None = Field(default=None, alias="defaultLanguage", max_length=35)
+    captions_available: bool | None = Field(default=None, alias="captionsAvailable")
+    selected_video_count: int = Field(alias="selectedVideoCount", ge=1, le=100)
+    total_video_count: int = Field(alias="totalVideoCount", ge=1, le=500)
+    selection_note: LocalizedText = Field(alias="selectionNote")
+    source_note: LocalizedText = Field(alias="sourceNote")
+    fetched_at: datetime = Field(alias="fetchedAt")
+    expires_at: datetime = Field(alias="expiresAt")
+
+    @field_validator("url")
+    @classmethod
+    def youtube_playlist_url(cls, value: str) -> str:
+        parsed = urlparse(value)
+        playlist_id = parse_qs(parsed.query).get("list", [None])[0]
+        if (
+            parsed.scheme != "https"
+            or parsed.netloc != "www.youtube.com"
+            or parsed.path != "/playlist"
+            or playlist_id is None
+        ):
+            raise ValueError("Recommended playlists must use a YouTube playlist URL")
+        return value
+
+    @model_validator(mode="after")
+    def valid_selection_size(self) -> "RecommendedPlaylist":
+        if self.selected_video_count > self.total_video_count:
+            raise ValueError("Selected video count cannot exceed the playlist size")
+        playlist_id = parse_qs(urlparse(self.url).query).get("list", [None])[0]
+        if playlist_id != self.playlist_id:
+            raise ValueError("YouTube playlist URL must match its playlist identifier")
+        if self.fetched_at.tzinfo is None or self.expires_at.tzinfo is None:
+            raise ValueError("YouTube metadata timestamps must include a timezone")
+        lifetime = self.expires_at.astimezone(UTC) - self.fetched_at.astimezone(UTC)
+        if lifetime <= timedelta(0) or lifetime > timedelta(days=29):
+            raise ValueError("YouTube metadata may be retained for at most 29 days")
+        return self
+
+
+class VideoRecommendation(StrictModel):
+    status: Literal["recommended", "no_match", "unavailable", "not_applicable"]
+    provider: Literal["youtube"] = "youtube"
+    message: LocalizedText
+
+
 class JourneyWeek(StrictModel):
     week_number: int = Field(alias="weekNumber", ge=1, le=8)
     theme: LocalizedTitle
     outcome: LocalizedText
     activities: list[JourneyActivity] = Field(min_length=7, max_length=7)
+    video_guide: WeeklyVideoGuide | None = Field(
+        default=None,
+        alias="videoGuide",
+        exclude_if=lambda value: value is None,
+    )
 
 
 class JourneyDocument(StrictModel):
-    schema_version: Literal["1.0.0", "1.1.0"] = Field(alias="schemaVersion")
+    schema_version: Literal["1.0.0", "1.1.0", "1.2.0"] = Field(alias="schemaVersion")
     journey_id: str = Field(alias="journeyId", min_length=12, max_length=120)
     status: Literal["draft", "confirmed"]
     starts_on: date = Field(alias="startsOn")
@@ -131,11 +230,26 @@ class JourneyDocument(StrictModel):
     summary: LocalizedText
     provenance: JourneyProvenance
     review: JourneyReview
+    video_recommendation: VideoRecommendation | None = Field(
+        default=None,
+        alias="videoRecommendation",
+        exclude_if=lambda value: value is None,
+    )
+    recommended_playlist: RecommendedPlaylist | None = Field(
+        default=None,
+        alias="recommendedPlaylist",
+        exclude_if=lambda value: value is None,
+    )
     weeks: list[JourneyWeek] = Field(min_length=2, max_length=8)
 
     @model_validator(mode="after")
     def exact_calendar_structure(self) -> "JourneyDocument":
-        expected_schema = schema_version_for_weeks(len(self.weeks))
+        has_video_recommendation = self.video_recommendation is not None
+        recommended = (
+            self.video_recommendation is not None
+            and self.video_recommendation.status == "recommended"
+        )
+        expected_schema = schema_version_for_weeks(len(self.weeks), has_video_recommendation)
         if self.schema_version != expected_schema:
             raise ValueError("Journey schema version must agree with its timeline length")
         if self.languages != ["en", "hi"]:
@@ -143,6 +257,21 @@ class JourneyDocument(StrictModel):
         expected_weeks = list(range(1, len(self.weeks) + 1))
         if [week.week_number for week in self.weeks] != expected_weeks:
             raise ValueError("Journey weeks must be consecutively numbered")
+        weekly_guides = [week.video_guide for week in self.weeks]
+        if recommended != (self.recommended_playlist is not None):
+            raise ValueError("Recommended video status must agree with playlist availability")
+        if recommended != all(guide is not None for guide in weekly_guides):
+            raise ValueError("A recommended playlist requires video guidance for every week")
+        if recommended:
+            videos = [video for guide in weekly_guides if guide for video in guide.videos]
+            video_ids = [video.video_id for video in videos]
+            if len(video_ids) != len(set(video_ids)):
+                raise ValueError("Recommended videos must not repeat across weeks")
+            if (
+                self.recommended_playlist
+                and len(video_ids) != self.recommended_playlist.selected_video_count
+            ):
+                raise ValueError("Selected video count must match the weekly lesson assignments")
         activities = [activity for week in self.weeks for activity in week.activities]
         expected_days = list(range(1, len(self.weeks) * 7 + 1))
         if [activity.day_number for activity in activities] != expected_days:
@@ -161,8 +290,47 @@ class JourneyDocument(StrictModel):
         return self
 
 
-def schema_version_for_weeks(plan_weeks: int) -> Literal["1.0.0", "1.1.0"]:
+def schema_version_for_weeks(
+    plan_weeks: int,
+    has_video_guide: bool = False,
+) -> Literal["1.0.0", "1.1.0", "1.2.0"]:
+    if has_video_guide:
+        return "1.2.0"
     return SCHEMA_VERSION if plan_weeks == 4 else FLEXIBLE_SCHEMA_VERSION
+
+
+def attach_video_recommendation(
+    journey: JourneyDocument,
+    *,
+    status: Literal["recommended", "no_match", "unavailable", "not_applicable"],
+    message: dict[str, str],
+    playlist: dict[str, object] | None = None,
+    weekly_guides: list[dict[str, object]] | None = None,
+) -> JourneyDocument:
+    document = journey.model_dump(by_alias=True)
+    document["schemaVersion"] = schema_version_for_weeks(len(journey.weeks), True)
+    document["videoRecommendation"] = {
+        "status": status,
+        "provider": "youtube",
+        "message": message,
+    }
+    if status == "recommended":
+        if playlist is None or weekly_guides is None:
+            raise ValueError("A recommended video result requires playlist and weekly guides")
+        document["recommendedPlaylist"] = playlist
+        for week, weekly_guide in zip(document["weeks"], weekly_guides, strict=True):
+            week["videoGuide"] = weekly_guide
+    return JourneyDocument.model_validate(document)
+
+
+def strip_video_recommendation(journey: JourneyDocument) -> JourneyDocument:
+    document = journey.model_dump(by_alias=True)
+    document.pop("videoRecommendation", None)
+    document.pop("recommendedPlaylist", None)
+    for week in document["weeks"]:
+        week.pop("videoGuide", None)
+    document["schemaVersion"] = schema_version_for_weeks(len(journey.weeks))
+    return JourneyDocument.model_validate(document)
 
 
 class JourneyCreateRequest(StrictModel):
@@ -454,7 +622,9 @@ def _build_journey(
         for day_index in range(7):
             day_number = week_index * 7 + day_index + 1
             if day_index < max_days:
-                kind: ActivityKind = ("learn", "practice", "practice", "create", "practice")[day_index]
+                kind: ActivityKind = ("learn", "practice", "practice", "create", "practice")[
+                    day_index
+                ]
                 required = True
                 duration = max_minutes
             elif day_index == max_days:

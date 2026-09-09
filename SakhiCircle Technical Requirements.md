@@ -81,6 +81,8 @@ Implement deterministic journey fixtures before connecting Gemini. The later bou
 
 All outputs use versioned Pydantic JSON. Validate dates, activity count, durations, required fields, language, and safety constraints. Retry invalid AI output once, then return a curated bilingual template. The learner can edit or reject the result before persistence.
 
+For every confirmed, non-sensitive learning topic, attempt automatic discovery through the official YouTube Data API v3 using only normalized topic, derived level, and preferred language. Schema `1.2.0` carries a recommendation status plus, when verified, exact playlist/video metadata and bilingual weekly guidance. Every week receives one or two ordered videos within the learner's weekly time budget, with prerequisites, a clearly labelled non-transcript learning overview, key points, expectations, and an observable result. Written journeys and expiring YouTube metadata are stored separately; failure or expiry must never remove or block the written journey. Production enablement requires a restricted server-only key, an approved privacy-policy URL, daily quotas, and a maximum 29-day metadata TTL.
+
 ### Analytics
 
 Send allowlisted backend events to partitioned BigQuery tables using pseudonymous identifiers. The checkpoint dashboard covers journey creation, match recommendation, and confirmation rates. It must not contain names, emails, transcripts, exact locations, raw text, or raw audio.

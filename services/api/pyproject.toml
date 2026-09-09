@@ -18,6 +18,7 @@ dependencies = [
   "google-cloud-firestore>=2.29,<3",
   "google-cloud-secret-manager>=2.30,<3",
   "google-cloud-tasks>=2.24,<3",
+  "httpx>=0.28,<1",
   "pydantic==2.13.4",
   "pydantic-settings>=2.10,<3",
   "uvicorn[standard]>=0.35,<1",
@@ -25,7 +26,6 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-  "httpx>=0.28,<1",
   "pytest>=8.4,<9",
   "pytest-cov>=6.2,<7",
   "ruff>=0.12,<1",

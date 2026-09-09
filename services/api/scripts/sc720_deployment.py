@@ -12,6 +12,7 @@ from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
+from urllib.parse import urlparse
 
 from app.persistence import MATCHING_DATASET_RECORD_VERSION
 from app.synthetic_data import generate_synthetic_dataset
@@ -67,6 +68,7 @@ def render_cloud_run_manifest(
     firebase_app_id: str,
     analytics_hmac_secret_version: str,
     allowed_origins: Sequence[str],
+    privacy_policy_url: str,
 ) -> str:
     """Render only the exact approved Cloud Run target with immutable inputs."""
 
@@ -77,6 +79,9 @@ def render_cloud_run_manifest(
     if _SECRET_VERSION_PATTERN.fullmatch(analytics_hmac_secret_version) is None:
         raise ValueError("A numeric immutable analytics secret version is required")
     origins = _validated_origins(allowed_origins)
+    parsed_privacy_url = urlparse(privacy_policy_url)
+    if parsed_privacy_url.scheme != "https" or not parsed_privacy_url.netloc:
+        raise ValueError("An owner-approved HTTPS privacy policy URL is required")
 
     replacements = {
         "${IMAGE_DIGEST}": image_digest,
@@ -84,6 +89,7 @@ def render_cloud_run_manifest(
         "${ANALYTICS_TASK_AUDIENCE}": CLOUD_RUN_URL,
         "${ANALYTICS_HMAC_SECRET_VERSION}": analytics_hmac_secret_version,
         "${ALLOWED_ORIGINS}": json.dumps(origins, separators=(",", ":")),
+        "${PRIVACY_POLICY_URL}": privacy_policy_url,
     }
     rendered = MANIFEST_TEMPLATE.read_text(encoding="utf-8")
     for placeholder, value in replacements.items():

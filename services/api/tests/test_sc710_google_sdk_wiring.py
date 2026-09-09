@@ -85,7 +85,8 @@ def test_cloud_run_template_binds_every_approved_analytics_resource_without_a_se
     assert "value: ${ANALYTICS_TASK_AUDIENCE}" in manifest
     assert "name: SAKHI_ANALYTICS_HMAC_SECRET_VERSIONS" in manifest
     assert "name: SAKHI_ANALYTICS_CURRENT_HMAC_SECRET_VERSION" in manifest
-    assert "secretKeyRef" not in manifest
+    assert manifest.count("secretKeyRef") == 1
+    assert "sakhi-youtube-data-api-key" in manifest
     assert "sakhi-analytics-hmac-key/versions/" not in manifest
 
 

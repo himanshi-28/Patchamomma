@@ -16,6 +16,8 @@ SakhiCircle is a voice-first web learning and mentorship platform where women ca
 
 Success means a learner can complete the full journey from onboarding to plan, match, circle, mentor booking, and progress update without needing technical assistance. The product must also make skills transferred, learning engagement, and mentor income measurable without turning private user activity into surveillance.
 
+For every confirmed learning topic that is safe for external discovery, a reviewed journey attempts to find a suitable sequential YouTube playlist, divide one or two verified videos across each chosen week, and explain what to prepare, notice, practise, and expect. The preferred plan language is tried first and any fallback is labelled. Video guidance enriches rather than replaces the complete written plan; an unavailable or unsuitable playlist never blocks it.
+
 ## Brand Personality
 
 Dignified, encouraging, rooted.

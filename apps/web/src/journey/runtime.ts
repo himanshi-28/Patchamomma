@@ -26,15 +26,59 @@ export interface JourneyActivity {
   safetyNote: LocalizedText;
 }
 
+export interface RecommendedVideo {
+  videoId: string;
+  title: string;
+  url: string;
+  position: number;
+  durationSeconds: number;
+  defaultLanguage: string | null;
+  captionsAvailable: boolean;
+}
+
+export interface WeeklyVideoGuide {
+  videos: RecommendedVideo[];
+  prerequisites: LocalizedInstructions;
+  summary: LocalizedText;
+  keyPoints: LocalizedInstructions;
+  whatToExpect: LocalizedText;
+  expectedResult: LocalizedText;
+}
+
+export interface RecommendedPlaylist {
+  provider: "youtube";
+  playlistId: string;
+  title: string;
+  channelTitle: string;
+  url: string;
+  selectionMethod: "automatic";
+  languageMatch: "preferred" | "fallback" | "unknown";
+  defaultLanguage: string | null;
+  captionsAvailable: boolean | null;
+  selectedVideoCount: number;
+  totalVideoCount: number;
+  selectionNote: LocalizedText;
+  sourceNote: LocalizedText;
+  fetchedAt: string;
+  expiresAt: string;
+}
+
+export interface VideoRecommendation {
+  status: "recommended" | "no_match" | "unavailable" | "not_applicable";
+  provider: "youtube";
+  message: LocalizedText;
+}
+
 export interface JourneyWeek {
   weekNumber: number;
   theme: LocalizedText;
   outcome: LocalizedText;
   activities: JourneyActivity[];
+  videoGuide?: WeeklyVideoGuide;
 }
 
 export interface JourneyDraft {
-  schemaVersion: "1.0.0" | "1.1.0";
+  schemaVersion: "1.0.0" | "1.1.0" | "1.2.0";
   journeyId: string;
   status: "draft" | "confirmed";
   startsOn: string;
@@ -53,12 +97,16 @@ export interface JourneyDraft {
     contractVersion: "safety-accessibility-v1";
     passedChecks: ["schema", "schedule", "accessibility", "safety", "localization"];
   };
+  recommendedPlaylist?: RecommendedPlaylist;
+  videoRecommendation?: VideoRecommendation;
   weeks: JourneyWeek[];
 }
 
 export interface JourneyGateway {
   create(startsOn: string): Promise<JourneyDraft>;
   confirm(draft: JourneyDraft): Promise<JourneyDraft>;
+  loadCurrent?(): Promise<JourneyDraft | null>;
+  refreshVideos?(journeyId: string): Promise<JourneyDraft>;
 }
 
 interface JourneyApiGatewayOptions {
@@ -142,6 +190,23 @@ export function createJourneyApiGateway({
         method: "PUT",
         body: JSON.stringify(draft),
       });
+    },
+    async loadCurrent() {
+      const response = await fetcher(`${api}/api/v1/journeys/current`, {
+        method: "GET",
+        headers: await headers(),
+      });
+      if (response.status === 404) return null;
+      if (!response.ok) throw new Error(`Journey retrieval failed with status ${response.status}.`);
+      return response.json() as Promise<JourneyDraft>;
+    },
+    async refreshVideos(journeyId) {
+      const response = await fetcher(
+        `${api}/api/v1/journeys/${encodeURIComponent(journeyId)}/video-recommendation`,
+        { method: "POST", headers: await headers() },
+      );
+      if (!response.ok) throw new Error(`Video refresh failed with status ${response.status}.`);
+      return response.json() as Promise<JourneyDraft>;
     },
   };
 }
