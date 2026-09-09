@@ -378,7 +378,8 @@ class GoogleYouTubeDiscovery:
     ) -> dict[str, Any]:
         response = await client.get(
             f"{YOUTUBE_API_ROOT}/{resource}",
-            params={**params, "key": self._api_key},
+            params=params,
+            headers={"X-Goog-Api-Key": self._api_key},
         )
         response.raise_for_status()
         payload = response.json()

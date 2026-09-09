@@ -107,6 +107,7 @@ export interface JourneyGateway {
   confirm(draft: JourneyDraft): Promise<JourneyDraft>;
   loadCurrent?(): Promise<JourneyDraft | null>;
   refreshVideos?(journeyId: string): Promise<JourneyDraft>;
+  removeVideos?(journeyId: string): Promise<JourneyDraft>;
 }
 
 interface JourneyApiGatewayOptions {
@@ -206,6 +207,14 @@ export function createJourneyApiGateway({
         { method: "POST", headers: await headers() },
       );
       if (!response.ok) throw new Error(`Video refresh failed with status ${response.status}.`);
+      return response.json() as Promise<JourneyDraft>;
+    },
+    async removeVideos(journeyId) {
+      const response = await fetcher(
+        `${api}/api/v1/journeys/${encodeURIComponent(journeyId)}/video-recommendation`,
+        { method: "DELETE", headers: await headers() },
+      );
+      if (!response.ok) throw new Error(`Video removal failed with status ${response.status}.`);
       return response.json() as Promise<JourneyDraft>;
     },
   };

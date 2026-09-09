@@ -22,6 +22,7 @@ import {
   createTranscriptAdapterForMode,
 } from "./onboarding/runtime";
 import { createRecommendationApiGateway } from "./recommendation/runtime";
+import { PrivacyPolicy } from "./privacy/PrivacyPolicy";
 import "./styles.css";
 
 const root = document.getElementById("root");
@@ -30,9 +31,16 @@ if (!root) {
   throw new Error("SakhiCircle could not find its application root.");
 }
 
-let demoMode = false;
-let authGateway: AuthGateway;
-let adapterMode: "deterministic" | "firebase_emulator" | "production" = "deterministic";
+if (window.location.pathname.replace(/\/$/, "") === "/privacy") {
+  createRoot(root).render(
+    <StrictMode>
+      <PrivacyPolicy />
+    </StrictMode>,
+  );
+} else {
+  let demoMode = false;
+  let authGateway: AuthGateway;
+  let adapterMode: "deterministic" | "firebase_emulator" | "production" = "deterministic";
 
 try {
   const authConfig = resolveAuthRuntimeConfig(import.meta.env);
@@ -92,3 +100,4 @@ createRoot(root).render(
     />
   </StrictMode>,
 );
+}

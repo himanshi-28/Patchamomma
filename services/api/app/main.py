@@ -38,6 +38,7 @@ from .journey import (
     JourneyDocument,
     attach_video_recommendation,
     build_deterministic_journey,
+    strip_video_recommendation,
     validate_journey_for_profile,
 )
 from .journey_workflow import (
@@ -671,6 +672,31 @@ def create_app(
                 detail={"code": "operational_data_unavailable"},
             ) from error
         return refreshed
+
+    @api.delete(
+        "/api/v1/journeys/{journey_id}/video-recommendation",
+        response_model=JourneyDocument,
+    )
+    async def delete_video_recommendation(
+        journey_id: str,
+        user: Annotated[AuthenticatedUser, Depends(require_user)],
+    ) -> JourneyDocument:
+        reserve_general_request(user)
+        require_operational_identity(user)
+        try:
+            current = api.state.journey_repository.get_confirmed_journey(user.uid)
+            if current is None or current.journey_id != journey_id:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail={"code": "journey_not_found"},
+                )
+            api.state.journey_repository.delete_video_recommendation(user.uid)
+        except OperationalDataUnavailable as error:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={"code": "operational_data_unavailable"},
+            ) from error
+        return strip_video_recommendation(current)
 
     @api.put("/api/v1/journeys/{journey_id}", response_model=JourneyDocument)
     async def confirm_journey(

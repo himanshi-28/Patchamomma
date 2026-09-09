@@ -138,6 +138,9 @@ const videoCopy = {
     refresh: "Find videos again",
     refreshing: "Looking for videos…",
     refreshError: "Videos could not be refreshed. Your written plan is still available.",
+    remove: "Remove video guide",
+    removing: "Removing video guide…",
+    removeError: "The video guide could not be removed. Your written plan is unchanged.",
   },
   hi: {
     playlistTitle: "सुझाई गई YouTube प्लेलिस्ट",
@@ -161,15 +164,20 @@ const videoCopy = {
     refresh: "वीडियो फिर खोजें",
     refreshing: "वीडियो खोजे जा रहे हैं…",
     refreshError: "वीडियो फिर नहीं खोजे जा सके। आपकी लिखित योजना उपलब्ध है।",
+    remove: "वीडियो गाइड हटाएँ",
+    removing: "वीडियो गाइड हटाई जा रही है…",
+    removeError: "वीडियो गाइड नहीं हट सकी। आपकी लिखित योजना में कोई बदलाव नहीं हुआ।",
   },
 } as const;
 
 interface VideoPlaylistOverviewProps {
   locale: Locale;
   playlist: RecommendedPlaylist;
+  onRemove?: () => void;
+  removing?: boolean;
 }
 
-function VideoPlaylistOverview({ locale, playlist }: VideoPlaylistOverviewProps) {
+function VideoPlaylistOverview({ locale, playlist, onRemove, removing = false }: VideoPlaylistOverviewProps) {
   const text = videoCopy[locale];
   const languageLabel = text[playlist.languageMatch];
   return (
@@ -190,6 +198,11 @@ function VideoPlaylistOverview({ locale, playlist }: VideoPlaylistOverviewProps)
         <ExternalLink aria-hidden="true" />
         {text.openPlaylist}
       </a>
+      {onRemove && (
+        <button className="text-button video-remove-action" type="button" onClick={onRemove} disabled={removing}>
+          {removing ? text.removing : text.remove}
+        </button>
+      )}
       <p className="video-source-note">
         <ShieldCheck aria-hidden="true" />
         <span>
@@ -281,6 +294,8 @@ export function JourneyFlow({
   const [savedPlanOpen, setSavedPlanOpen] = useState(false);
   const [refreshingVideos, setRefreshingVideos] = useState(false);
   const [videoRefreshError, setVideoRefreshError] = useState(false);
+  const [removingVideos, setRemovingVideos] = useState(false);
+  const [videoRemoveError, setVideoRemoveError] = useState(false);
   const [offlineCacheState, setOfflineCacheState] = useState<"available" | "unavailable" | null>(
     restoredJourney ? "available" : null,
   );
@@ -396,6 +411,22 @@ export function JourneyFlow({
     }
   };
 
+  const removeVideos = async () => {
+    if (!draft || !gatewayRef.current.removeVideos) return;
+    setRemovingVideos(true);
+    setVideoRemoveError(false);
+    try {
+      const writtenPlan = await gatewayRef.current.removeVideos(draft.journeyId);
+      setDraft(writtenPlan);
+      cacheConfirmedJourney(writtenPlan);
+      onConfirmed?.(writtenPlan);
+    } catch {
+      setVideoRemoveError(true);
+    } finally {
+      setRemovingVideos(false);
+    }
+  };
+
   const videoFallback = draft?.videoRecommendation
     && draft.videoRecommendation.status !== "recommended"
     ? (
@@ -478,8 +509,14 @@ export function JourneyFlow({
             </button>
           </div>
           {draft.recommendedPlaylist && (
-            <VideoPlaylistOverview locale={locale} playlist={draft.recommendedPlaylist} />
+            <VideoPlaylistOverview
+              locale={locale}
+              playlist={draft.recommendedPlaylist}
+              onRemove={gatewayRef.current.removeVideos ? removeVideos : undefined}
+              removing={removingVideos}
+            />
           )}
+          {videoRemoveError && <p className="save-error" role="alert">{videoCopy[locale].removeError}</p>}
           {videoFallback}
           {savedPlanOpen && (
             <div id="saved-journey-weeks" className="saved-journey-weeks">

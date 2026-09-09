@@ -7,7 +7,11 @@ from fastapi.testclient import TestClient
 from app.config import Settings
 from app.journey import JourneyDocument
 from app.main import create_app
-from app.persistence import InMemoryJourneyRepository
+from app.persistence import (
+    InMemoryJourneyRepository,
+    InMemoryProfileRepository,
+    InMemoryRecommendationRepository,
+)
 from app.quotas import InMemoryQuotaCounterStore, QuotaExceeded, QuotaService
 from app.video_recommendations import (
     DiscoveredPlaylist,
@@ -275,6 +279,37 @@ def test_current_journey_and_explicit_video_refresh_are_available() -> None:
     assert refreshed.json()["videoRecommendation"]["status"] == "recommended"
 
 
+def test_learner_can_delete_video_metadata_without_deleting_the_written_plan() -> None:
+    repository = InMemoryJourneyRepository()
+    app = create_app(
+        Settings(app_env="test", demo_mode=True),
+        journey_repository=repository,
+        profile_repository=InMemoryProfileRepository(),
+        recommendation_repository=InMemoryRecommendationRepository(),
+        video_recommendation_service=service([candidate()], generated(4)),
+    )
+    client = TestClient(app)
+    client.put("/api/v1/profile", json=profile(), headers=AUTH_HEADERS)
+    draft = client.post("/api/v1/journeys", json={"startsOn": "2026-09-10"}, headers=AUTH_HEADERS).json()
+    saved = client.put(
+        f"/api/v1/journeys/{draft['journeyId']}",
+        json=draft,
+        headers=AUTH_HEADERS,
+    ).json()
+
+    removed = client.delete(
+        f"/api/v1/journeys/{saved['journeyId']}/video-recommendation",
+        headers=AUTH_HEADERS,
+    )
+
+    assert removed.status_code == 200
+    assert removed.json()["status"] == "confirmed"
+    assert "videoRecommendation" not in removed.json()
+    assert "recommendedPlaylist" not in removed.json()
+    assert len(removed.json()["weeks"]) == 4
+    assert repository.video_recommendations == {}
+
+
 def test_expired_video_metadata_is_removed_without_losing_the_written_plan() -> None:
     current_time = [NOW]
     repository = InMemoryJourneyRepository(clock=lambda: current_time[0])
@@ -310,7 +345,7 @@ def test_youtube_search_quota_is_five_per_learner_and_twenty_per_project() -> No
 def test_youtube_adapter_sends_only_a_bounded_topic_query_and_filters_bad_videos(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    requests: list[tuple[str, dict]] = []
+    requests: list[tuple[str, dict, dict]] = []
 
     class Response:
         def __init__(self, payload: dict) -> None:
@@ -332,8 +367,8 @@ def test_youtube_adapter_sends_only_a_bounded_topic_query_and_filters_bad_videos
         async def __aexit__(self, *_args) -> None:
             return None
 
-        async def get(self, url: str, *, params: dict):
-            requests.append((url, params))
+        async def get(self, url: str, *, params: dict, headers: dict):
+            requests.append((url, params, headers))
             if url.endswith("/search"):
                 return Response({"items": [{"id": {"playlistId": "PLgeneralCourse12345"}}]})
             if url.endswith("/playlists"):
@@ -395,7 +430,8 @@ def test_youtube_adapter_sends_only_a_bounded_topic_query_and_filters_bad_videos
         "relevanceLanguage": "hi",
         "maxResults": 5,
         "q": "Piano beginner course",
-        "key": "server-secret",
     }
+    assert requests[0][2] == {"X-Goog-Api-Key": "server-secret"}
+    assert all("key" not in params for _, params, _ in requests)
     assert [video.video_id for video in result[0].videos] == ["lesson00001"]
     assert result[0].videos[0].duration_seconds == 720

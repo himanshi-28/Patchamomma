@@ -7,6 +7,7 @@ import {
   LogOut,
   Mail,
   MessageCircle,
+  ShieldCheck,
   Sparkles,
   UserRound,
   UsersRound,
@@ -69,6 +70,7 @@ interface Copy {
   greeting: string;
   profileLabel: string;
   signOut: string;
+  privacyPolicy: string;
   startHeading: string;
   startBody: string;
   startAction: string;
@@ -131,6 +133,7 @@ const copy: Record<Locale, Copy> = {
     greeting: "Hi",
     profileLabel: "profile",
     signOut: "Sign out",
+    privacyPolicy: "Privacy Policy",
     startHeading: "Your next chapter starts here",
     startBody: "Tell us what you have always wanted to learn. We will shape it around your time, pace, and comfort.",
     startAction: "Choose my first hobby",
@@ -197,6 +200,7 @@ const copy: Record<Locale, Copy> = {
     greeting: "नमस्ते",
     profileLabel: "प्रोफ़ाइल",
     signOut: "साइन आउट करें",
+    privacyPolicy: "गोपनीयता नीति",
     startHeading: "आपकी नई शुरुआत यहीं से है",
     startBody: "हमें बताइए कि आप हमेशा से क्या सीखना चाहती थीं। हम आपकी सुविधा, समय और गति के अनुसार योजना बनाएँगे।",
     startAction: "अपना पहला शौक चुनें",
@@ -458,10 +462,16 @@ export function App({
         <p className="visually-hidden" aria-live="polite" aria-atomic="true">{languageAnnouncement}</p>
         <header className="public-header">
           <Brand ariaLabel={text.brandLabel} />
-          <button className="language-button" type="button" onClick={toggleLocale}>
-            <Languages aria-hidden="true" />
-            {text.languageAction}
-          </button>
+          <div className="public-header-actions">
+            <a className="privacy-header-link" href="/privacy" aria-label={text.privacyPolicy}>
+              <ShieldCheck aria-hidden="true" />
+              <span>{text.privacyPolicy}</span>
+            </a>
+            <button className="language-button" type="button" onClick={toggleLocale}>
+              <Languages aria-hidden="true" />
+              {text.languageAction}
+            </button>
+          </div>
         </header>
 
         <main id="main-content" className="login-layout">
@@ -581,6 +591,10 @@ export function App({
             </button>
             {profileOpen && (
               <div id="profile-menu" className="profile-menu">
+                <a className="profile-menu-link" href="/privacy">
+                  <ShieldCheck aria-hidden="true" />
+                  {text.privacyPolicy}
+                </a>
                 <button type="button" onClick={signOut} disabled={busy}>
                   <LogOut aria-hidden="true" />
                   {text.signOut}
@@ -775,6 +789,7 @@ export function App({
                     recommendationGateway={recommendationGateway}
                     matchingConsent={matchingConsent}
                     initialJourney={restoredJourney}
+                    onConfirmed={setRestoredJourney}
                   />
                 ) : (
                   <section className="empty-view plan-empty-view" aria-labelledby="plan-empty-heading">

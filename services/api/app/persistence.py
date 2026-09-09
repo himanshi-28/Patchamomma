@@ -39,6 +39,8 @@ class JourneyRepository(Protocol):
 
     def get_confirmed_journey(self, uid: str) -> JourneyDocument | None: ...
 
+    def delete_video_recommendation(self, uid: str) -> None: ...
+
 
 class RecommendationRepository(Protocol):
     def get_dataset(self) -> SyntheticDataset: ...
@@ -221,6 +223,10 @@ class InMemoryJourneyRepository:
             return journey
         return _join_video_enrichment(journey, recommendation)
 
+    def delete_video_recommendation(self, uid: str) -> None:
+        _document_path(YOUTUBE_RECOMMENDATION_COLLECTION, uid)
+        self.video_recommendations.pop(uid, None)
+
 
 class InMemoryRecommendationRepository:
     """Deterministic local-only read adapter for the committed synthetic catalog."""
@@ -320,6 +326,13 @@ class FirestoreJourneyRepository:
             if _utc_timestamp(self._clock()) >= recommendation.expires_at:
                 return journey
             return _join_video_enrichment(journey, recommendation)
+        except Exception as error:
+            raise OperationalDataUnavailable("operational data unavailable") from error
+
+    def delete_video_recommendation(self, uid: str) -> None:
+        path = _document_path(YOUTUBE_RECOMMENDATION_COLLECTION, uid)
+        try:
+            self.client.document(path).delete()
         except Exception as error:
             raise OperationalDataUnavailable("operational data unavailable") from error
 

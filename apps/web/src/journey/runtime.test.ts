@@ -46,4 +46,23 @@ describe("journey API boundary", () => {
     await expect(gateway.loadCurrent!()).resolves.toBeNull();
     expect(fetcher).toHaveBeenNthCalledWith(1, "https://api.example.test/api/v1/journeys/current", expect.objectContaining({ method: "GET" }));
   });
+
+  it("removes only the current plan's video enrichment through the protected API", async () => {
+    const writtenJourney = { journeyId: "journey-current", schemaVersion: "1.0.0" };
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => writtenJourney,
+    });
+    const gateway = createJourneyApiGateway({
+      apiBaseUrl: "https://api.example.test",
+      requestHeaders: async () => ({ Authorization: "Bearer test", "X-Firebase-AppCheck": "check" }),
+      fetcher: fetcher as typeof fetch,
+    });
+
+    await expect(gateway.removeVideos?.("journey-current")).resolves.toEqual(writtenJourney);
+    expect(fetcher).toHaveBeenCalledWith(
+      "https://api.example.test/api/v1/journeys/journey-current/video-recommendation",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+  });
 });

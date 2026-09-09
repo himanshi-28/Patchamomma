@@ -416,4 +416,27 @@ describe("SC-410 journey flow", () => {
     expect(refreshVideos).toHaveBeenCalledWith(unavailable.journeyId);
     expect(await screen.findByRole("heading", { name: "Recommended YouTube playlist" })).toBeVisible();
   });
+
+  it("removes saved YouTube metadata without removing the written plan", async () => {
+    const user = userEvent.setup();
+    const guided = { ...makeVideoGuidedDraft(), status: "confirmed" as const };
+    const written = makeDraft();
+    written.status = "confirmed";
+    const removeVideos = vi.fn().mockResolvedValue(written);
+
+    render(
+      <JourneyFlow
+        locale="en"
+        gateway={{ create: vi.fn(), confirm: vi.fn(), removeVideos }}
+        initialJourney={guided}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "View saved plan" }));
+    await user.click(screen.getByRole("button", { name: "Remove video guide" }));
+
+    expect(removeVideos).toHaveBeenCalledWith(guided.journeyId);
+    expect(screen.queryByRole("heading", { name: "Recommended YouTube playlist" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Colour practice 1" })).toBeVisible();
+  });
 });
