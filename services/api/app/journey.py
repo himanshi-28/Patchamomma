@@ -470,7 +470,7 @@ def _activity_copy(
         rest_titles_en = (
             f"Pause after {focus_en}",
             f"Rest after {focus_en}",
-            f"Prepare gently for the next week",
+            "Prepare gently for the next week",
         )
         rest_titles_hi = (
             f"{focus_hi} के बाद विराम",
