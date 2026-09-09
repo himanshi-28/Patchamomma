@@ -196,33 +196,99 @@ def validate_journey_for_profile(
     return journey
 
 
-PHASES = [
+HARP_WEEK_FOCUSES = [
     (
-        ("Begin gently", "सहज शुरुआत"),
-        ("Set up comfortably and learn the foundations.", "सुविधा से तैयारी करें और बुनियादी बातें समझें।"),
+        ("Meet the harp", "हार्प को समझें"),
+        ("Find a supported sitting position and learn how the instrument rests safely.", "सहारे के साथ बैठने की स्थिति और वाद्य को सुरक्षित रखने का तरीका समझें।"),
+        ("comfortable posture and harp position", "बैठने और हार्प रखने की सहज स्थिति"),
+        ("Sit with both feet supported, bring the harp gently toward you, and relax your shoulders before touching the strings.", "दोनों पैर टिकाकर बैठें, हार्प को धीरे से अपनी ओर लाएँ और तार छूने से पहले कंधे ढीले रखें।"),
     ),
     (
-        ("Build the foundation", "बुनियाद मजबूत करें"),
-        ("Practise one small technique at a steady pace.", "सहज गति से एक छोटी तकनीक का अभ्यास करें।"),
+        ("Find notes by colour", "रंग से सुर पहचानें"),
+        ("Use the coloured strings as landmarks for finding notes.", "रंगीन तारों की मदद से सुरों की जगह पहचानें।"),
+        ("string colours and note names", "तारों के रंग और सुरों के नाम"),
+        ("Find one red C string and the nearest blue or black F string, then say the note names as you point to them.", "एक लाल C तार और उसके पास नीला या काला F तार खोजें, फिर उनकी ओर इशारा करते हुए सुरों के नाम बोलें।"),
     ),
     (
-        ("Create your small project", "अपना छोटा प्रोजेक्ट बनाएँ"),
-        ("Bring the practised steps together toward your goal.", "अभ्यास के चरणों को अपने लक्ष्य के लिए साथ लाएँ।"),
+        ("Shape a clear pluck", "साफ़ प्लक बनाना सीखें"),
+        ("Produce one clear note with a relaxed hand.", "ढीले हाथ से एक साफ़ सुर निकालें।"),
+        ("a relaxed one-finger pluck", "एक उँगली से सहज प्लक"),
+        ("Place one fingertip on a middle string, close it gently into your palm, and listen for an even tone.", "एक उँगली का सिरा बीच के तार पर रखें, उसे धीरे से हथेली की ओर बंद करें और समान सुर सुनें।"),
     ),
     (
-        ("Finish and reflect", "पूरा करें और विचार करें"),
-        ("Finish the project and notice what you can do now.", "प्रोजेक्ट पूरा करें और अपनी नई क्षमता पहचानें।"),
+        ("Alternate two fingers", "दो उँगलियाँ बारी-बारी चलाएँ"),
+        ("Move between two nearby notes without tightening the hand.", "हाथ में खिंचाव लाए बिना पास के दो सुरों के बीच चलें।"),
+        ("alternating fingers for even notes", "समान सुरों के लिए उँगलियाँ बारी-बारी चलाना"),
+        ("Alternate fingers two and one on two nearby strings, relaxing the hand briefly between each pair of notes.", "पास के दो तारों पर दूसरी और पहली उँगली बारी-बारी चलाएँ और हर दो सुरों के बीच हाथ को थोड़ा ढीला करें।"),
+    ),
+    (
+        ("Build a four-note pattern", "चार सुरों का क्रम बनाएँ"),
+        ("Connect neighbouring notes in both directions.", "पास के सुरों को दोनों दिशाओं में जोड़ें।"),
+        ("a four-note rising and falling pattern", "चार सुरों का चढ़ता और उतरता क्रम"),
+        ("Play four neighbouring notes upward, pause, then return downward at the same slow pace.", "पास के चार सुर ऊपर की ओर बजाएँ, रुकें, फिर उसी धीमी गति से नीचे की ओर लौटें।"),
+    ),
+    (
+        ("Keep a steady pulse", "स्थिर ताल बनाए रखें"),
+        ("Place clear notes on an even four-beat count.", "चार समान गिनतियों पर साफ़ सुर बजाएँ।"),
+        ("placing notes on four steady beats", "चार स्थिर तालों पर सुर रखना"),
+        ("Count four steady beats aloud and play one chosen note on each beat without rushing.", "चार स्थिर ताल ज़ोर से गिनें और बिना जल्दी किए हर ताल पर एक चुना हुआ सुर बजाएँ।"),
+    ),
+    (
+        ("Connect a short phrase", "छोटा संगीत वाक्य जोड़ें"),
+        ("Turn familiar notes into a short musical idea.", "पहचाने हुए सुरों से एक छोटा संगीत विचार बनाएँ।"),
+        ("connecting notes into a short melody", "सुरों को छोटी धुन में जोड़ना"),
+        ("Choose three or four familiar notes and connect them into a short phrase with one clear pause.", "तीन या चार पहचाने हुए सुर चुनें और एक साफ़ विराम के साथ उन्हें छोटे संगीत वाक्य में जोड़ें।"),
+    ),
+    (
+        ("Play and reflect", "बजाएँ और विचार करें"),
+        ("Play a complete beginner melody and notice one improvement.", "पूरी शुरुआती धुन बजाएँ और एक सुधार पहचानें।"),
+        ("a complete short beginner melody", "पूरी छोटी शुरुआती धुन"),
+        ("Play your short melody from start to finish, pause, then repeat only the section you most want to improve.", "अपनी छोटी धुन शुरू से अंत तक बजाएँ, रुकें, फिर केवल वह हिस्सा दोहराएँ जिसे सबसे अधिक सुधारना चाहती हैं।"),
     ),
 ]
 
 
-def _activity_copy(kind: ActivityKind, day_number: int, hobby: str) -> dict[str, object]:
+def _generic_week_focuses(profile: LearningWishProfile) -> list[tuple[tuple[str, str], tuple[str, str], tuple[str, str], tuple[str, str]]]:
+    hobby = profile.hobby
+    goal = profile.goal or f"complete one small {hobby} piece"
+    return [
+        ((f"Get ready for {hobby}", f"{hobby} के लिए तैयारी"), ("Set up only what you need and choose a comfortable starting point.", "केवल ज़रूरी चीज़ें तैयार करें और सहज शुरुआत चुनें।"), (f"the basic parts and setup for {hobby}", f"{hobby} की बुनियादी चीज़ें और तैयारी"), (f"Name the basic parts or tools used for {hobby}, then arrange only what you need for one short practice.", f"{hobby} की बुनियादी चीज़ों या साधनों के नाम बोलें, फिर एक छोटे अभ्यास के लिए केवल ज़रूरी सामान रखें।")),
+        (("Understand one example", "एक उदाहरण समझें"), (f"Notice what makes a beginner {hobby} example work.", f"समझें कि {hobby} का शुरुआती उदाहरण कैसे काम करता है।"), (f"one clear beginner example of {hobby}", f"{hobby} का एक साफ़ शुरुआती उदाहरण"), (f"Choose one beginner {hobby} example and name one detail you want to learn from it.", f"{hobby} का एक शुरुआती उदाहरण चुनें और उससे सीखने वाली एक बात का नाम बोलें।")),
+        (("Learn the first technique", "पहली तकनीक सीखें"), ("Break one foundation technique into small, repeatable movements.", "एक बुनियादी तकनीक को छोटे दोहराने योग्य चरणों में बाँटें।"), (f"one foundation {hobby} technique", f"{hobby} की एक बुनियादी तकनीक"), (f"Break one foundation {hobby} technique into two small movements and practise the first movement slowly.", f"{hobby} की एक बुनियादी तकनीक को दो छोटे चरणों में बाँटें और पहला चरण धीरे-धीरे करें।")),
+        (("Build steady control", "स्थिर नियंत्रण बनाएँ"), ("Repeat the foundation technique with an even pace.", "बुनियादी तकनीक को समान गति से दोहराएँ।"), (f"steady control of the foundation {hobby} technique", f"{hobby} की बुनियादी तकनीक पर स्थिर नियंत्रण"), ("Repeat the learned technique three times at the same easy pace, pausing between attempts.", "सीखी हुई तकनीक को सहज समान गति से तीन बार दोहराएँ और हर कोशिश के बीच रुकें।")),
+        (("Connect two skills", "दो कौशल जोड़ें"), ("Bring two familiar steps together in one short sequence.", "दो पहचाने हुए चरणों को एक छोटे क्रम में जोड़ें।"), (f"connecting two familiar {hobby} steps", f"{hobby} के दो पहचाने हुए चरण जोड़ना"), (f"Choose two {hobby} steps you have practised and connect them once without adding a new step.", f"{hobby} के दो अभ्यास किए हुए चरण चुनें और नया चरण जोड़े बिना उन्हें एक बार जोड़ें।")),
+        (("Make a first version", "पहला रूप बनाएँ"), (f"Use your practised steps toward this goal: {goal}.", f"अपने लक्ष्य की ओर अभ्यास किए हुए चरण इस्तेमाल करें: {goal}।"), (f"a first small version of {goal}", f"{goal} का पहला छोटा रूप"), (f"Use two practised {hobby} skills to make one small first version; stop before trying to perfect it.", f"{hobby} के दो अभ्यास किए कौशलों से पहला छोटा रूप बनाएँ; उसे बिल्कुल सही बनाने से पहले रुकें।")),
+        (("Refine one section", "एक हिस्सा सुधारें"), ("Compare two attempts and improve one chosen detail.", "दो कोशिशों की तुलना करके एक चुनी हुई बात सुधारें।"), (f"one chosen detail in {goal}", f"{goal} की एक चुनी हुई बात"), ("Compare your first version with your goal, choose one small section, and repeat only that section.", "अपने पहले रूप की लक्ष्य से तुलना करें, एक छोटा हिस्सा चुनें और केवल वही हिस्सा दोहराएँ।")),
+        (("Complete and reflect", "पूरा करें और विचार करें"), ("Complete one version and name what you can now do.", "एक रूप पूरा करें और अपनी नई क्षमता पहचानें।"), (f"a complete version of {goal}", f"{goal} का पूरा रूप"), (f"Complete one version using the {hobby} skills you practised, then name one skill that now feels clearer.", f"अभ्यास किए हुए {hobby} कौशलों से एक रूप पूरा करें, फिर उस कौशल का नाम बोलें जो अब अधिक स्पष्ट लगता है।")),
+    ]
+
+
+def _week_focuses(profile: LearningWishProfile) -> list[tuple[tuple[str, str], tuple[str, str], tuple[str, str], tuple[str, str]]]:
+    focuses = HARP_WEEK_FOCUSES if re.search(r"\bharp\b|हार्प", profile.hobby, re.IGNORECASE) else _generic_week_focuses(profile)
+    selections = {
+        2: (0, 7),
+        4: (0, 2, 5, 7),
+        6: (0, 1, 3, 4, 6, 7),
+        8: tuple(range(8)),
+    }[profile.plan_weeks]
+    return [focuses[index] for index in selections]
+
+
+def _activity_copy(
+    kind: ActivityKind,
+    day_number: int,
+    hobby: str,
+    focus: tuple[str, str],
+    instruction: tuple[str, str],
+) -> dict[str, object]:
+    focus_en, focus_hi = focus
+    is_harp = bool(re.search(r"\bharp\b|हार्प", hobby, re.IGNORECASE))
     if kind == "rest":
         return {
-            "title": {"en": "Rest and notice", "hi": "आराम करें और ध्यान दें"},
+            "title": {"en": f"Rest after {focus_en}", "hi": f"{focus_hi} के बाद आराम"},
             "instructions": {
-                "en": ["Keep today free, or look back at one piece of work if you wish."],
-                "hi": ["आज आराम करें, या चाहें तो अपने किसी एक काम को फिर देखें।"],
+                "en": [f"Keep today free, or quietly recall one thing you learned about {focus_en}."],
+                "hi": [f"आज आराम करें, या {focus_hi} के बारे में सीखी हुई एक बात शांति से याद करें।"],
             },
             "accessibleAlternative": {
                 "en": "Listen to your notes or describe your progress aloud instead of completing the activity.",
@@ -239,10 +305,10 @@ def _activity_copy(kind: ActivityKind, day_number: int, hobby: str) -> dict[str,
         }
     if kind == "reflect":
         return {
-            "title": {"en": "Review this week's practice", "hi": "इस सप्ताह के अभ्यास को देखें"},
+            "title": {"en": f"Review {focus_en}", "hi": f"{focus_hi} की समीक्षा"},
             "instructions": {
-                "en": ["Choose one practice piece and note one part you want to repeat."],
-                "hi": ["अभ्यास का एक काम चुनें और वह हिस्सा लिखें जिसे फिर करना चाहती हैं।"],
+                "en": [f"Choose your clearest attempt at {focus_en} and note one part you want to repeat."],
+                "hi": [f"{focus_hi} की अपनी सबसे साफ़ कोशिश चुनें और दोहराने वाला एक हिस्सा लिखें।"],
             },
             "accessibleAlternative": {
                 "en": "Record a short spoken reflection or ask someone to write your words.",
@@ -257,34 +323,115 @@ def _activity_copy(kind: ActivityKind, day_number: int, hobby: str) -> dict[str,
                 "hi": "सहज गति से जाँचें और थकान होने पर रुकें।",
             },
         }
-    action = "Learn" if kind == "learn" else "Create" if kind == "create" else "Practise"
-    action_hi = "सीखें" if kind == "learn" else "बनाएँ" if kind == "create" else "अभ्यास करें"
+    day_slot = (day_number - 1) % 7
+    actions = ("Learn", "Try", "Repeat with control", "Connect", "Revisit")
+    actions_hi = ("समझें", "कोशिश करें", "नियंत्रण से दोहराएँ", "जोड़ें", "फिर देखें")
+    follow_up_en = (
+        "Say the focus in your own words before beginning.",
+        "Repeat it three times, with a short pause between attempts.",
+        "Compare the last attempt with the first and keep the movement easy.",
+        "Use it once in a short sequence without adding a new skill.",
+        "Repeat your clearest attempt once, then stop at the planned time.",
+    )[day_slot]
+    follow_up_hi = (
+        "शुरू करने से पहले इस अभ्यास को अपने शब्दों में बोलें।",
+        "हर कोशिश के बीच थोड़ा रुककर इसे तीन बार दोहराएँ।",
+        "आखिरी कोशिश की पहली से तुलना करें और गति सहज रखें।",
+        "नया कौशल जोड़े बिना इसे एक छोटे क्रम में एक बार इस्तेमाल करें।",
+        "अपनी सबसे साफ़ कोशिश एक बार दोहराएँ, फिर तय समय पर रुकें।",
+    )[day_slot]
+    if is_harp:
+        alternatives_en = (
+            "Work seated with both feet supported and the harp resting securely against you.",
+            "Practise the hand movement away from the strings if holding the harp is tiring.",
+            "Divide the practice into two shorter turns and relax your hand between them.",
+            "Use fewer strings and a slower pace while keeping the same musical idea.",
+            "Describe or hum the pattern before playing it once at a comfortable pace.",
+        )
+        alternatives_hi = (
+            "दोनों पैर टिकाकर बैठें और हार्प को अपने पास सुरक्षित सहारा दें।",
+            "हार्प पकड़ना थकाने वाला हो तो तारों से दूर केवल हाथ की गति करें।",
+            "अभ्यास को दो छोटे हिस्सों में बाँटें और उनके बीच हाथ को ढीला करें।",
+            "उसी संगीत विचार को रखते हुए कम तार और धीमी गति चुनें।",
+            "सहज गति से एक बार बजाने से पहले क्रम को बोलकर या गुनगुनाकर बताएँ।",
+        )
+        safety_en = (
+            "Keep the harp stable and the floor around your feet clear before you begin.",
+            "Keep your shoulders low and your wrist neutral; pause if either starts to tighten.",
+            "Use a gentle pluck and stop if a fingertip, hand, or shoulder feels uncomfortable.",
+            "Do not adjust, tune, or replace tight strings without experienced guidance.",
+            "Finish at the planned time and move the harp only after placing both feet firmly on the floor.",
+        )
+        safety_hi = (
+            "शुरू करने से पहले हार्प को स्थिर रखें और पैरों के आसपास की जगह साफ़ रखें।",
+            "कंधे नीचे और कलाई सीधी रखें; खिंचाव शुरू हो तो रुकें।",
+            "हल्का प्लक करें और उँगली, हाथ या कंधे में असहजता हो तो रुकें।",
+            "अनुभवी मार्गदर्शन के बिना कसे तारों को न कसें, ट्यून न करें और न बदलें।",
+            "तय समय पर समाप्त करें और दोनों पैर ज़मीन पर टिकाने के बाद ही हार्प हटाएँ।",
+        )
+    else:
+        alternatives_en = (
+            f"Work seated and arrange {focus_en} within easy reach.",
+            f"Practise only the smallest movement involved in {focus_en}.",
+            f"Divide {focus_en} into two shorter turns with a rest between them.",
+            f"Use a lighter or slower version of {focus_en} while keeping the same goal.",
+            f"Describe the steps for {focus_en} aloud before trying them once.",
+        )
+        alternatives_hi = (
+            f"बैठकर अभ्यास करें और {focus_hi} की चीज़ें आसान पहुँच में रखें।",
+            f"{focus_hi} में शामिल केवल सबसे छोटी गति का अभ्यास करें।",
+            f"{focus_hi} को दो छोटे हिस्सों में बाँटें और उनके बीच आराम करें।",
+            f"उसी लक्ष्य के साथ {focus_hi} का हल्का या धीमा रूप चुनें।",
+            f"एक बार कोशिश करने से पहले {focus_hi} के चरण ज़ोर से बोलें।",
+        )
+        safety_en = (
+            "Keep the practice area clear and use only equipment you already understand.",
+            "Keep the movement easy and pause as soon as anything feels uncomfortable.",
+            "Check your posture before each repeat and avoid forcing the movement.",
+            "Add no new tool or difficult step while combining the skills.",
+            "Stop at the planned time even if you would like to repeat the activity again.",
+        )
+        safety_hi = (
+            "अभ्यास की जगह साफ़ रखें और केवल वही साधन इस्तेमाल करें जिन्हें आप समझती हैं।",
+            "गति सहज रखें और असहजता शुरू होते ही रुकें।",
+            "हर बार दोहराने से पहले बैठने या खड़े होने की स्थिति जाँचें और गति पर ज़ोर न डालें।",
+            "कौशल जोड़ते समय कोई नया साधन या कठिन चरण न जोड़ें।",
+            "दोबारा करने की इच्छा हो तब भी तय समय पर रुकें।",
+        )
+    reflections_en = (
+        f"Which part of {focus_en} is clear enough to explain in your own words?",
+        f"What felt different on the third try at {focus_en}?",
+        f"Which movement in {focus_en} became more even today?",
+        f"What stayed clear when you connected {focus_en} into a short sequence?",
+        f"What is one improvement you noticed in {focus_en} this week?",
+    )
+    reflections_hi = (
+        f"{focus_hi} का कौन-सा हिस्सा आप अपने शब्दों में समझा सकती हैं?",
+        f"{focus_hi} की तीसरी कोशिश में क्या अलग लगा?",
+        f"{focus_hi} की कौन-सी गति आज अधिक समान हुई?",
+        f"{focus_hi} को छोटे क्रम में जोड़ते समय क्या स्पष्ट रहा?",
+        f"इस सप्ताह {focus_hi} में आपने कौन-सा एक सुधार देखा?",
+    )
     return {
         "title": {
-            "en": f"{action} one steady {hobby} step · Day {day_number}",
-            "hi": f"{hobby} का एक सहज चरण {action_hi} · दिन {day_number}",
+            "en": f"{actions[day_slot]}: {focus_en}",
+            "hi": f"{focus_hi}: {actions_hi[day_slot]}",
         },
         "instructions": {
-            "en": [
-                f"Prepare a comfortable space for {hobby}.",
-                f"Complete one small {hobby} practice step, then stop at the planned time.",
-            ],
-            "hi": [
-                f"{hobby} के लिए एक सहज जगह तैयार करें।",
-                f"{hobby} का एक छोटा अभ्यास चरण पूरा करें और तय समय पर रुकें।",
-            ],
+            "en": [instruction[0], follow_up_en],
+            "hi": [instruction[1], follow_up_hi],
         },
         "accessibleAlternative": {
-            "en": "Choose a seated or lower-effort version and divide the step into shorter turns.",
-            "hi": "बैठकर या कम मेहनत वाला विकल्प चुनें और चरण को छोटे हिस्सों में बाँटें।",
+            "en": alternatives_en[day_slot],
+            "hi": alternatives_hi[day_slot],
         },
         "reflectionPrompt": {
-            "en": "What felt easier after today's practice?",
-            "hi": "आज के अभ्यास के बाद क्या आसान लगा?",
+            "en": reflections_en[day_slot],
+            "hi": reflections_hi[day_slot],
         },
         "safetyNote": {
-            "en": "Keep the practice area clear and pause if anything feels uncomfortable.",
-            "hi": "अभ्यास की जगह साफ़ रखें और असहजता होने पर रुकें।",
+            "en": safety_en[day_slot],
+            "hi": safety_hi[day_slot],
         },
     }
 
@@ -302,12 +449,7 @@ def _build_journey(
     english_weeks = {2: "Two", 4: "Four", 6: "Six", 8: "Eight"}[profile.plan_weeks]
     hindi_weeks = {2: "दो", 4: "चार", 6: "छह", 8: "आठ"}[profile.plan_weeks]
     weeks: list[dict[str, object]] = []
-    for week_index in range(profile.plan_weeks):
-        phase_index = min(
-            week_index * len(PHASES) // profile.plan_weeks,
-            len(PHASES) - 1,
-        )
-        theme, outcome = PHASES[phase_index]
+    for week_index, (theme, outcome, focus, instruction) in enumerate(_week_focuses(profile)):
         activities: list[dict[str, object]] = []
         for day_index in range(7):
             day_number = week_index * 7 + day_index + 1
@@ -331,7 +473,7 @@ def _build_journey(
                     "kind": kind,
                     "required": required,
                     "durationMinutes": duration,
-                    **_activity_copy(kind, day_number, profile.hobby),
+                    **_activity_copy(kind, day_number, profile.hobby, focus, instruction),
                 }
             )
         weeks.append(

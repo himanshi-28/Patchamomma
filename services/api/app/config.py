@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     demo_mode: bool = False
     adapter_mode: Literal["deterministic", "firebase_emulator", "production"] = "deterministic"
     journey_adapter_mode: Literal["deterministic", "gemini_adk"] = "deterministic"
-    journey_attempt_timeout_seconds: float = Field(default=180, gt=0, le=180)
+    journey_attempt_timeout_seconds: float = Field(default=30, gt=0, le=30)
     profile_extraction_timeout_seconds: float = Field(default=10, gt=0, le=10)
     paid_api_calls_enabled: bool = False
     gemini_model: str = "gemini-3.7-flash"

@@ -362,7 +362,7 @@ def test_production_gemini_configuration_requires_explicit_paid_calls_and_creden
     )
     assert vertex.gemini_api_key is None
     assert vertex.gemini_backend == "vertex_ai"
-    assert vertex.journey_attempt_timeout_seconds == 180
+    assert vertex.journey_attempt_timeout_seconds == 30
     assert vertex.profile_extraction_timeout_seconds == 10
 
 
