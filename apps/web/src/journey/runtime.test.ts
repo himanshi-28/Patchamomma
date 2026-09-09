@@ -30,4 +30,20 @@ describe("journey API boundary", () => {
     expect(fetcher.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal);
     expect(fetcher.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
   });
+
+  it("loads the signed-in learner's confirmed plan and treats no plan as empty", async () => {
+    const savedPlan = { journeyId: "saved-plan" };
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(savedPlan), { status: 200 }))
+      .mockResolvedValueOnce(new Response(null, { status: 404 }));
+    const gateway = createJourneyApiGateway({
+      apiBaseUrl: "https://api.example.test/",
+      requestHeaders: async () => ({ Authorization: "Bearer test" }),
+      fetcher: fetcher as typeof fetch,
+    });
+
+    await expect(gateway.loadCurrent!()).resolves.toEqual(savedPlan);
+    await expect(gateway.loadCurrent!()).resolves.toBeNull();
+    expect(fetcher).toHaveBeenNthCalledWith(1, "https://api.example.test/api/v1/journeys/current", expect.objectContaining({ method: "GET" }));
+  });
 });

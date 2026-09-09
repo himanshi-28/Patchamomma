@@ -44,4 +44,14 @@ test("the real browser completes the judged journey against FastAPI without rout
   expect((await recommendationResponse).status()).toBe(200);
   await expect(page.getByRole("heading", { name: "Your demo mentor" })).toBeFocused();
   await expect(page.getByText("Leela Mentor Demo")).toBeVisible();
+
+  await page.getByRole("button", { name: "Meera Sharma profile" }).click();
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await expect(page.getByRole("heading", { name: "Welcome to SakhiCircle" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Continue as Meera" }).click();
+  await expect(page.getByRole("heading", { name: "Your plan is ready for today" })).toBeVisible();
+  await page.getByRole("button", { name: "Open My Plan" }).click();
+  await expect(page.getByRole("heading", { name: "Your four-week plan is saved" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "View saved plan" })).toBeVisible();
 });

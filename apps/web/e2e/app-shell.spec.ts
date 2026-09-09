@@ -1,5 +1,25 @@
 import { expect, test } from "@playwright/test";
 
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/v1/journeys/current", async (route) => {
+    const headers = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Firebase-AppCheck",
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
+    };
+    if (route.request().method() === "OPTIONS") {
+      await route.fulfill({ status: 204, headers });
+      return;
+    }
+    await route.fulfill({
+      status: 404,
+      contentType: "application/json",
+      headers,
+      body: JSON.stringify({ detail: { code: "confirmed_journey_not_found" } }),
+    });
+  });
+});
+
 const expectDocumentToFitViewport = async (page: import("@playwright/test").Page) => {
   const overflow = await page.evaluate(() => ({
     horizontal: document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -717,6 +737,10 @@ test("bilingual journey stays unsaved through review and persists only the confi
       await route.fulfill({ status: 204, headers: corsHeaders });
       return;
     }
+    if (route.request().method() === "GET") {
+      await route.fallback();
+      return;
+    }
     const payload = route.request().postDataJSON();
     if (route.request().method() === "POST") {
       journeyCreates.push(payload);
@@ -813,6 +837,10 @@ test("one explainable match is fetched only by the explicit action and survives 
     };
     if (route.request().method() === "OPTIONS") {
       await route.fulfill({ status: 204, headers });
+      return;
+    }
+    if (route.request().method() === "GET") {
+      await route.fallback();
       return;
     }
     const draft = route.request().method() === "POST"

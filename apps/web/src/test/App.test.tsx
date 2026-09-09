@@ -5,7 +5,7 @@ import { afterEach, vi } from "vitest";
 import { App } from "../App";
 import { createDeterministicAuthGateway } from "../auth/runtime";
 import type { AuthGateway } from "../auth/runtime";
-import { cacheConfirmedJourney } from "../journey/cache";
+import { cacheConfirmedJourney, CONFIRMED_JOURNEY_CACHE_KEY } from "../journey/cache";
 import type { JourneyDraft } from "../journey/runtime";
 import styles from "../styles.css?raw";
 import documentSource from "../../index.html?raw";
@@ -260,6 +260,36 @@ describe("SakhiCircle app shell", () => {
     await user.click(screen.getByRole("link", { name: "My Circle" }));
     await user.click(screen.getByRole("link", { name: "Today" }));
     expect(screen.getByRole("heading", { name: "Your four-week plan is saved" })).toBeVisible();
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("restores the signed-in learner's saved plan from the server after logout and sign-in", async () => {
+    const user = userEvent.setup();
+    const savedJourney = makeCachedJourney();
+    const loadCurrent = vi.fn().mockResolvedValue(savedJourney);
+    const create = vi.fn();
+    expect(cacheConfirmedJourney(savedJourney)).toBe(true);
+
+    render(
+      <App
+        demoMode
+        journeyGateway={{ create, confirm: vi.fn(), loadCurrent }}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Continue as Meera" }));
+
+    expect(await screen.findByRole("heading", { name: "Your plan is ready for today" })).toBeVisible();
+    await waitFor(() => expect(loadCurrent).toHaveBeenCalledTimes(1));
+    await user.click(screen.getByRole("button", { name: "Open My Plan" }));
+    expect(screen.getByRole("heading", { name: "Your four-week plan is saved" })).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Meera Sharma profile" }));
+    await user.click(screen.getByRole("button", { name: "Sign out" }));
+    expect(await screen.findByRole("heading", { name: "Welcome to SakhiCircle" })).toBeVisible();
+    expect(window.localStorage.getItem(CONFIRMED_JOURNEY_CACHE_KEY)).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Continue as Meera" }));
+    expect(await screen.findByRole("heading", { name: "Your plan is ready for today" })).toBeVisible();
+    expect(loadCurrent).toHaveBeenCalledTimes(2);
     expect(create).not.toHaveBeenCalled();
   });
 });

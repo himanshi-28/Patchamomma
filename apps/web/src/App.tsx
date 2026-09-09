@@ -279,6 +279,7 @@ export function App({
   const [onboardingStarted, setOnboardingStarted] = useState(false);
   const [journeyStarted, setJourneyStarted] = useState(false);
   const [restoredJourney, setRestoredJourney] = useState<JourneyDraft | null>(null);
+  const [journeyRestorePending, setJourneyRestorePending] = useState(true);
   const [matchingConsent, setMatchingConsent] = useState(false);
   const [planWeeks, setPlanWeeks] = useState(4);
   const [voiceAdapter] = useState(() => transcriptAdapter ?? createDeterministicTranscriptAdapter());
@@ -310,6 +311,7 @@ export function App({
       setPlanWeeks(4);
       setRestoredJourney(null);
       setTodayView("today");
+      setJourneyRestorePending(true);
       return;
     }
     let active = true;
@@ -322,15 +324,23 @@ export function App({
     };
     const cachedJourney = readConfirmedJourneyCache();
     if (cachedJourney) showJourney(cachedJourney);
-    if (!demoMode && journeyGateway?.loadCurrent) {
-      void journeyGateway.loadCurrent().then((current) => {
+    if (!journeyGateway?.loadCurrent) {
+      setJourneyRestorePending(false);
+      return () => { active = false; };
+    }
+    void journeyGateway.loadCurrent()
+      .then((current) => {
         if (!current) return;
         cacheConfirmedJourney(current);
         showJourney(current);
-      }).catch(() => undefined);
-    }
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) setJourneyRestorePending(false);
+      });
+
     return () => { active = false; };
-  }, [authenticated, demoMode, journeyGateway]);
+  }, [authenticated, journeyGateway, session?.uid]);
 
   useLayoutEffect(() => {
     if (!authenticated) return;
@@ -654,7 +664,11 @@ export function App({
                 aria-labelledby="today-tab-today"
                 hidden={todayView !== "today"}
               >
-                {restoredJourney ? (
+                {journeyRestorePending && !restoredJourney ? (
+                  <section className="journey-state" aria-busy="true">
+                    <p role="status">{locale === "en" ? "Loading your saved plan…" : "आपकी सेव की हुई योजना लोड हो रही है…"}</p>
+                  </section>
+                ) : restoredJourney ? (
                   <section className="plan-today-summary" aria-labelledby="today-heading">
                     <BookOpenText aria-hidden="true" />
                     <div>
@@ -749,7 +763,11 @@ export function App({
                 aria-labelledby="today-tab-plan"
                 hidden={todayView !== "plan"}
               >
-                {restoredJourney && journeyGateway ? (
+                {journeyRestorePending && !restoredJourney ? (
+                  <section className="journey-state" aria-busy="true">
+                    <p role="status">{locale === "en" ? "Loading your saved plan…" : "आपकी सेव की हुई योजना लोड हो रही है…"}</p>
+                  </section>
+                ) : restoredJourney && journeyGateway ? (
                   <JourneyFlow
                     locale={locale}
                     gateway={journeyGateway}
