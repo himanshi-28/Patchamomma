@@ -358,6 +358,17 @@ def validate_journey_for_profile(
         )
         if required_non_rest > max_days:
             raise ValueError("Journey exceeds confirmed days-per-week availability")
+        for language in ("en", "hi"):
+            seen_steps: set[str] = set()
+            for activity in week.activities:
+                if not activity.required or activity.kind == "rest":
+                    continue
+                instructions = getattr(activity.instructions, language)
+                for instruction in instructions:
+                    normalized = " ".join(instruction.casefold().split())
+                    if normalized in seen_steps:
+                        raise ValueError("Journey repeats an instruction across learning days")
+                    seen_steps.add(normalized)
         for activity in week.activities:
             if activity.kind != "rest" and activity.duration_minutes > max_minutes:
                 raise ValueError("Journey exceeds confirmed per-day availability")
@@ -432,7 +443,10 @@ def _generic_week_focuses(profile: LearningWishProfile) -> list[tuple[tuple[str,
 
 
 def _week_focuses(profile: LearningWishProfile) -> list[tuple[tuple[str, str], tuple[str, str], tuple[str, str], tuple[str, str]]]:
-    focuses = HARP_WEEK_FOCUSES if re.search(r"\bharp\b|हार्प", profile.hobby, re.IGNORECASE) else _generic_week_focuses(profile)
+    if re.search(r"\bharp\b|हार्प", profile.hobby, re.IGNORECASE):
+        focuses = HARP_WEEK_FOCUSES
+    else:
+        focuses = _generic_week_focuses(profile)
     selections = {
         2: (0, 7),
         4: (0, 2, 5, 7),
@@ -451,24 +465,76 @@ def _activity_copy(
 ) -> dict[str, object]:
     focus_en, focus_hi = focus
     is_harp = bool(re.search(r"\bharp\b|हार्प", hobby, re.IGNORECASE))
+    day_slot = (day_number - 1) % 7
     if kind == "rest":
+        rest_titles_en = (
+            f"Pause after {focus_en}",
+            f"Rest after {focus_en}",
+            f"Prepare gently for the next week",
+        )
+        rest_titles_hi = (
+            f"{focus_hi} के बाद विराम",
+            f"{focus_hi} के बाद आराम",
+            "अगले सप्ताह की सहज तैयारी",
+        )
+        rest_instructions_en = (
+            f"Leave practice aside today and notice one thing that now feels familiar about {focus_en}.",
+            "Take a full rest day with no planned practice.",
+            "Keep today free; if useful, choose the time for your first practice next week.",
+        )
+        rest_instructions_hi = (
+            f"आज अभ्यास अलग रखें और {focus_hi} के बारे में अब पहचानी लगने वाली एक बात याद करें।",
+            "आज बिना किसी तय अभ्यास के पूरा आराम करें।",
+            "आज का दिन खाली रखें; उपयोगी लगे तो अगले सप्ताह के पहले अभ्यास का समय चुनें।",
+        )
+        rest_alternatives_en = (
+            "Recall the week silently; no writing or equipment is needed.",
+            "No alternative activity is needed on this full rest day.",
+            "Ask someone to note your chosen practice time if writing is inconvenient.",
+        )
+        rest_alternatives_hi = (
+            "सप्ताह को मन ही मन याद करें; लिखने या किसी साधन की ज़रूरत नहीं है।",
+            "इस पूरे आराम के दिन किसी वैकल्पिक गतिविधि की ज़रूरत नहीं है।",
+            "लिखना असुविधाजनक हो तो किसी से चुना हुआ अभ्यास समय लिखवा लें।",
+        )
+        rest_reflections_en = (
+            "What from this week would you like to remember?",
+            "Does your body and attention feel ready for another week?",
+            "What is one small intention for the next practice?",
+        )
+        rest_reflections_hi = (
+            "इस सप्ताह की कौन-सी बात आप याद रखना चाहेंगी?",
+            "क्या आपका शरीर और ध्यान अगले सप्ताह के लिए तैयार महसूस करते हैं?",
+            "अगले अभ्यास के लिए एक छोटा इरादा क्या है?",
+        )
+        rest_safety_en = (
+            "Do not turn recall into another practice session; keep today restful.",
+            "Rest fully and return only when you feel comfortable.",
+            "Prepare only the schedule today; leave equipment setup for the practice day.",
+        )
+        rest_safety_hi = (
+            "याद करने को दूसरा अभ्यास सत्र न बनाएँ; आज आराम रखें।",
+            "पूरा आराम करें और सहज महसूस होने पर ही दोबारा शुरू करें।",
+            "आज केवल समय तय करें; साधन अभ्यास के दिन ही तैयार करें।",
+        )
+        rest_slot = max(0, day_slot - 4)
         return {
-            "title": {"en": f"Rest after {focus_en}", "hi": f"{focus_hi} के बाद आराम"},
+            "title": {"en": rest_titles_en[rest_slot], "hi": rest_titles_hi[rest_slot]},
             "instructions": {
-                "en": [f"Keep today free, or quietly recall one thing you learned about {focus_en}."],
-                "hi": [f"आज आराम करें, या {focus_hi} के बारे में सीखी हुई एक बात शांति से याद करें।"],
+                "en": [rest_instructions_en[rest_slot]],
+                "hi": [rest_instructions_hi[rest_slot]],
             },
             "accessibleAlternative": {
-                "en": "Listen to your notes or describe your progress aloud instead of completing the activity.",
-                "hi": "गतिविधि करने के बजाय अपने नोट सुनें या अपनी प्रगति बोलकर बताएँ।",
+                "en": rest_alternatives_en[rest_slot],
+                "hi": rest_alternatives_hi[rest_slot],
             },
             "reflectionPrompt": {
-                "en": "What would make the next practice feel comfortable?",
-                "hi": "अगला अभ्यास सहज बनाने के लिए क्या मदद करेगा?",
+                "en": rest_reflections_en[rest_slot],
+                "hi": rest_reflections_hi[rest_slot],
             },
             "safetyNote": {
-                "en": "Rest fully today and return only when you feel comfortable.",
-                "hi": "आज पूरा आराम करें और सहज महसूस होने पर ही दोबारा शुरू करें।",
+                "en": rest_safety_en[rest_slot],
+                "hi": rest_safety_hi[rest_slot],
             },
         }
     if kind == "reflect":
@@ -491,23 +557,42 @@ def _activity_copy(
                 "hi": "सहज गति से जाँचें और थकान होने पर रुकें।",
             },
         }
-    day_slot = (day_number - 1) % 7
     actions = ("Learn", "Try", "Repeat with control", "Connect", "Revisit")
     actions_hi = ("समझें", "कोशिश करें", "नियंत्रण से दोहराएँ", "जोड़ें", "फिर देखें")
-    follow_up_en = (
-        "Say the focus in your own words before beginning.",
-        "Repeat it three times, with a short pause between attempts.",
-        "Compare the last attempt with the first and keep the movement easy.",
-        "Use it once in a short sequence without adding a new skill.",
-        "Repeat your clearest attempt once, then stop at the planned time.",
-    )[day_slot]
-    follow_up_hi = (
-        "शुरू करने से पहले इस अभ्यास को अपने शब्दों में बोलें।",
-        "हर कोशिश के बीच थोड़ा रुककर इसे तीन बार दोहराएँ।",
-        "आखिरी कोशिश की पहली से तुलना करें और गति सहज रखें।",
-        "नया कौशल जोड़े बिना इसे एक छोटे क्रम में एक बार इस्तेमाल करें।",
-        "अपनी सबसे साफ़ कोशिश एक बार दोहराएँ, फिर तय समय पर रुकें।",
-    )[day_slot]
+    topic_focus_en = (
+        focus_en
+        if hobby.casefold() in focus_en.casefold()
+        else f"{focus_en} in {hobby}"
+    )
+    topic_focus_hi = (
+        focus_hi
+        if hobby.casefold() in focus_hi.casefold()
+        else f"{hobby} में {focus_hi}"
+    )
+    opening_instruction_en = (
+        instruction[0]
+        if hobby.casefold() in f"{focus_en} {instruction[0]}".casefold()
+        else f"For {hobby}, focus on this step: {instruction[0]}"
+    )
+    opening_instruction_hi = (
+        instruction[1]
+        if hobby.casefold() in f"{focus_hi} {instruction[1]}".casefold()
+        else f"{hobby} के लिए यह चरण करें: {instruction[1]}"
+    )
+    daily_instructions_en = (
+        (opening_instruction_en, "Say the focus in your own words before beginning."),
+        (f"Return to {topic_focus_en} and repeat its smallest useful step three times, pausing briefly after each attempt.",),
+        (f"Practise {topic_focus_en} at an even, unhurried pace; compare the final attempt with the first.",),
+        (f"Use {topic_focus_en} once in a short sequence, then repeat only the point where you paused.",),
+        (f"Choose your clearest attempt at {topic_focus_en}, repeat it once, and stop at the planned time.",),
+    )
+    daily_instructions_hi = (
+        (opening_instruction_hi, "शुरू करने से पहले इस अभ्यास को अपने शब्दों में बोलें।"),
+        (f"{topic_focus_hi} पर लौटें और उसके सबसे छोटे उपयोगी चरण को तीन बार करें; हर कोशिश के बाद थोड़ा रुकें।",),
+        (f"{topic_focus_hi} का अभ्यास समान, सहज गति से करें; आखिरी कोशिश की पहली से तुलना करें।",),
+        (f"{topic_focus_hi} को एक छोटे क्रम में एक बार इस्तेमाल करें, फिर केवल वहीं दोहराएँ जहाँ आप रुकी थीं।",),
+        (f"{topic_focus_hi} की अपनी सबसे साफ़ कोशिश चुनें, उसे एक बार दोहराएँ और तय समय पर रुकें।",),
+    )
     if is_harp:
         alternatives_en = (
             "Work seated with both feet supported and the harp resting securely against you.",
@@ -586,8 +671,8 @@ def _activity_copy(
             "hi": f"{focus_hi}: {actions_hi[day_slot]}",
         },
         "instructions": {
-            "en": [instruction[0], follow_up_en],
-            "hi": [instruction[1], follow_up_hi],
+            "en": list(daily_instructions_en[day_slot]),
+            "hi": list(daily_instructions_hi[day_slot]),
         },
         "accessibleAlternative": {
             "en": alternatives_en[day_slot],

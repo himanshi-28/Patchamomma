@@ -89,6 +89,16 @@ def invalid_result(_request: JourneyWorkflowInput) -> JourneyWorkflowResult:
     )
 
 
+def repeated_result(request: JourneyWorkflowInput) -> JourneyWorkflowResult:
+    result = valid_result(request)
+    assert result.document is not None
+    first = result.document["weeks"][0]["activities"][0]
+    second = result.document["weeks"][0]["activities"][1]
+    second["instructions"]["en"][0] = first["instructions"]["en"][0]
+    second["instructions"]["hi"][0] = first["instructions"]["hi"][0]
+    return result
+
+
 def client_with_profile(
     workflow: ScriptedWorkflow | None,
     *,
@@ -181,6 +191,22 @@ def test_invalid_output_retries_the_complete_workflow_once_then_returns_valid_ou
     assert len(workflow.requests) == 2
     assert workflow.requests[1].rejection_codes == ["validation"]
     assert app.state.integration_call_counts == {"ai": 2, "paid": 0}
+
+
+def test_repeated_daily_instruction_retries_then_uses_nonrepeating_fallback() -> None:
+    workflow = ScriptedWorkflow([repeated_result, repeated_result])
+    client, _ = client_with_profile(workflow)
+
+    response = generate(client)
+
+    assert response.status_code == 200
+    assert response.json()["provenance"]["fallbackReason"] == "validation_failed_twice"
+    assert len(workflow.requests) == 2
+    assert workflow.requests[1].rejection_codes == ["validation"]
+    assert all(
+        len({tuple(activity["instructions"]["en"]) for activity in week["activities"]}) == 7
+        for week in response.json()["weeks"]
+    )
 
 
 def test_reviewer_rejection_twice_returns_complete_reviewed_fallback() -> None:
@@ -338,7 +364,9 @@ def test_gemini_prompts_require_topic_specific_plans_and_reject_generic_output()
     from app.journey_workflow import PLAN_INSTRUCTION, REVIEW_INSTRUCTION
 
     assert "specific to the confirmed hobby" in PLAN_INSTRUCTION
+    assert "Do not reuse an instruction sentence" in PLAN_INSTRUCTION
     assert "could apply unchanged to a different hobby" in REVIEW_INSTRUCTION
+    assert "repeats an instruction sentence" in REVIEW_INSTRUCTION
 
 
 def test_production_gemini_configuration_requires_explicit_paid_calls_and_credentials() -> None:
