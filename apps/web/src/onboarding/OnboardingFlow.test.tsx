@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { run } from "axe-core";
 import { describe, expect, it, vi } from "vitest";
@@ -61,7 +61,7 @@ describe("SC-310 onboarding flow", () => {
     expect(screen.getByRole("button", { name: "Review my details" })).toBeEnabled();
   });
 
-  it("requires transcript review and plan consent, then discards the transcript after save", async () => {
+  it("uses final plan consent as the only review confirmation, then discards the transcript after save", async () => {
     const user = userEvent.setup();
     const save = vi.fn().mockResolvedValue(undefined);
     render(<OnboardingFlow locale="en" transcriptAdapter={createDeterministicTranscriptAdapter()} profileGateway={{ save }} />);
@@ -70,8 +70,8 @@ describe("SC-310 onboarding flow", () => {
     await user.click(screen.getByRole("button", { name: "Review my details" }));
     const confirm = screen.getByRole("button", { name: "Confirm and create my 4-week plan" });
     expect(confirm).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "My words look right" })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "My words look right" }));
     await user.click(screen.getByRole("checkbox", { name: /I agree SakhiCircle may use/ }));
     expect(confirm).toBeEnabled();
     await user.click(confirm);
@@ -80,6 +80,35 @@ describe("SC-310 onboarding flow", () => {
     expect(save.mock.calls[0][0]).not.toHaveProperty("transcript");
     expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Your plan is ready to build" }));
     expect(screen.queryByDisplayValue(completeTranscript)).not.toBeInTheDocument();
+  });
+
+  it("shows every structured detail as an immediately editable field and marks required fields visibly", async () => {
+    const user = userEvent.setup();
+    const save = vi.fn().mockResolvedValue(undefined);
+    render(<OnboardingFlow locale="en" transcriptAdapter={createDeterministicTranscriptAdapter()} profileGateway={{ save }} />);
+
+    await user.type(screen.getByLabelText("Your learning wish"), completeTranscript);
+    await user.click(screen.getByRole("button", { name: "Review my details" }));
+
+    const hobby = screen.getByRole("textbox", { name: "What would you like to learn? Required" });
+    expect(hobby).toBeRequired();
+    expect(screen.getByRole("combobox", { name: "Time you can give Required" })).toBeRequired();
+    expect(screen.getByRole("combobox", { name: "Plan language Required" })).toBeRequired();
+    expect(screen.getByRole("combobox", { name: "What would make learning easier? Required" })).toBeRequired();
+    expect(screen.getByRole("combobox", { name: "How you prefer to learn Required" })).toBeRequired();
+    expect(screen.getByRole("combobox", { name: "Your experience (optional)" })).toBeVisible();
+    expect(screen.getByRole("textbox", { name: "Your first goal (optional)" })).toBeVisible();
+    expect(screen.getByRole("textbox", { name: "City (optional)" })).toBeVisible();
+    expect(screen.getAllByText("Required")).toHaveLength(5);
+    expect(screen.queryByRole("button", { name: /^Edit:/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Save detail" })).not.toBeInTheDocument();
+
+    await user.clear(hobby);
+    await user.type(hobby, "My edited watercolour wish");
+    await user.click(screen.getByRole("checkbox", { name: /I agree SakhiCircle may use/ }));
+    await user.click(screen.getByRole("button", { name: "Confirm and create my 4-week plan" }));
+
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({ hobby: "My edited watercolour wish" }));
   });
 
   it("hands confirmed details to plan generation before showing a ready state", async () => {
@@ -97,7 +126,6 @@ describe("SC-310 onboarding flow", () => {
 
     await user.type(screen.getByLabelText("Your learning wish"), completeTranscript);
     await user.click(screen.getByRole("button", { name: "Review my details" }));
-    await user.click(screen.getByRole("button", { name: "My words look right" }));
     await user.click(screen.getByRole("checkbox", { name: /I agree SakhiCircle may use/ }));
     await user.click(screen.getByRole("button", { name: "Confirm and create my 4-week plan" }));
 
@@ -115,7 +143,6 @@ describe("SC-310 onboarding flow", () => {
 
     await user.type(screen.getByLabelText("Your learning wish"), completeTranscript);
     await user.click(screen.getByRole("button", { name: "Review my details" }));
-    await user.click(screen.getByRole("button", { name: "My words look right" }));
     await user.click(screen.getByRole("checkbox", { name: /I agree SakhiCircle may use/ }));
     await user.click(screen.getByRole("button", { name: "Confirm and create my 4-week plan" }));
 
@@ -136,10 +163,8 @@ describe("SC-310 onboarding flow", () => {
     );
     await user.click(screen.getByRole("button", { name: "Review my details" }));
 
-    expect(screen.getByText("Your experience (optional)")).toBeVisible();
-    expect(screen.getByText("Your first goal (optional)")).toBeVisible();
-    expect(screen.getAllByText("Not provided (optional)")).toHaveLength(2);
-    await user.click(screen.getByRole("button", { name: "My words look right" }));
+    expect(screen.getByRole("combobox", { name: "Your experience (optional)" })).toHaveValue("");
+    expect(screen.getByRole("textbox", { name: "Your first goal (optional)" })).toHaveValue("");
     await user.click(screen.getByRole("checkbox", { name: /I agree SakhiCircle may use/ }));
     await user.click(screen.getByRole("button", { name: "Confirm and create my 4-week plan" }));
 
@@ -150,26 +175,18 @@ describe("SC-310 onboarding flow", () => {
     }));
   });
 
-  it("reveals missing-field guidance from the required star without persistent red warning text", async () => {
+  it("keeps missing required fields visible, editable, and blocks confirmation", async () => {
     const user = userEvent.setup();
     render(<OnboardingFlow locale="en" transcriptAdapter={createDeterministicTranscriptAdapter()} profileGateway={{ save: vi.fn() }} />);
 
     await user.type(screen.getByLabelText("Your learning wish"), "I want to learn Kathak.");
     await user.click(screen.getByRole("button", { name: "Review my details" }));
 
-    expect(screen.queryAllByText("Please add this")).toHaveLength(0);
-
-    const timeRequiredStar = screen.getByRole("button", {
-      name: "Time you can give: Required. Please add this",
-    });
-    await user.hover(timeRequiredStar);
-    expect(screen.getByRole("tooltip", { name: "Please add this" })).toBeVisible();
-
-    await user.unhover(timeRequiredStar);
-    expect(screen.queryByRole("tooltip", { name: "Please add this" })).not.toBeInTheDocument();
-
-    act(() => timeRequiredStar.focus());
-    expect(screen.getByRole("tooltip", { name: "Please add this" })).toBeVisible();
+    const availability = screen.getByRole("combobox", { name: "Time you can give Required" });
+    expect(availability).toBeRequired();
+    expect(availability).toHaveValue("");
+    await user.click(screen.getByRole("checkbox", { name: /I agree SakhiCircle may use/ }));
+    expect(screen.getByRole("button", { name: "Confirm and create my 4-week plan" })).toBeDisabled();
   });
 
   it("prefills the confirmation page from an arbitrary typed learning wish", async () => {
@@ -182,9 +199,9 @@ describe("SC-310 onboarding flow", () => {
     );
     await user.click(screen.getByRole("button", { name: "Review my details" }));
 
-    expect(screen.getByText("Kathak")).toBeVisible();
-    expect(screen.getByText("Perform a short piece")).toBeVisible();
-    expect(screen.getByText("30 minutes · 4 days a week")).toBeVisible();
+    expect(screen.getByRole("textbox", { name: "What would you like to learn? Required" })).toHaveValue("Kathak");
+    expect(screen.getByRole("textbox", { name: "Your first goal (optional)" })).toHaveValue("Perform a short piece");
+    expect(screen.getByRole("combobox", { name: "Time you can give Required" })).toHaveValue("30 minutes · 4 days a week");
     expect(screen.getByText("What are you learning for? (optional)")).toBeVisible();
   });
 
@@ -228,8 +245,7 @@ describe("SC-310 onboarding flow", () => {
     });
 
     expect(await screen.findByText("AI suggested these details. Please check each one before saving.")).toBeVisible();
-    await user.click(screen.getByRole("button", { name: "Edit: What would you like to learn?" }));
-    expect(screen.getByLabelText("What would you like to learn?")).toHaveValue("Kathak");
+    expect(screen.getByRole("textbox", { name: "What would you like to learn? Required" })).toHaveValue("Kathak");
   });
 
   it("falls back to local suggestions when AI extraction is unavailable", async () => {
@@ -256,7 +272,7 @@ describe("SC-310 onboarding flow", () => {
     expect(await screen.findByRole("status", { name: "Suggestion status" })).toHaveTextContent(
       "AI suggestions were unavailable, so we filled what we could on this device.",
     );
-    expect(screen.getByText("Pottery")).toBeVisible();
+    expect(screen.getByRole("textbox", { name: "What would you like to learn? Required" })).toHaveValue("Pottery");
   });
 
   it("labels intentionally local suggestions without claiming an AI failure", async () => {
@@ -286,7 +302,6 @@ describe("SC-310 onboarding flow", () => {
 
     await user.type(screen.getByLabelText("Your learning wish"), completeTranscript);
     await user.click(screen.getByRole("button", { name: "Review my details" }));
-    await user.click(screen.getByRole("button", { name: "My words look right" }));
     await user.click(screen.getByRole("checkbox", { name: /I agree SakhiCircle may use/ }));
     await user.click(screen.getByRole("button", { name: "Confirm and create my 4-week plan" }));
 

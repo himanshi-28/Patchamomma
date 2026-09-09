@@ -26,7 +26,6 @@ describe("learning timeline choice", () => {
 
     expect(screen.getByRole("combobox", { name: "Learning timeline" })).toHaveValue("6");
     expect(screen.getByText("I agree SakhiCircle may use these reviewed details to create my private 6-week plan.")).toBeVisible();
-    await user.click(screen.getByRole("button", { name: "My words look right" }));
     await user.click(screen.getByRole("checkbox", { name: /create my private 6-week plan/ }));
     await user.click(screen.getByRole("button", { name: "Confirm and create my 6-week plan" }));
 
