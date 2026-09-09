@@ -72,7 +72,7 @@ def test_cloud_run_manifest_is_fail_closed_and_contains_no_secret_values() -> No
         "SAKHI_DEMO_MODE": "false",
         "SAKHI_ADAPTER_MODE": "production",
         "SAKHI_JOURNEY_ADAPTER_MODE": "gemini_adk",
-        "SAKHI_JOURNEY_ATTEMPT_TIMEOUT_SECONDS": "180",
+        "SAKHI_JOURNEY_ATTEMPT_TIMEOUT_SECONDS": "30",
         "SAKHI_PROFILE_EXTRACTION_TIMEOUT_SECONDS": "10",
         "SAKHI_PAID_API_CALLS_ENABLED": "true",
         "SAKHI_GEMINI_MODEL": "gemini-3.7-flash",

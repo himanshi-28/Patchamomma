@@ -10,7 +10,6 @@ test("the real browser completes the judged journey against FastAPI without rout
     "I want to restart watercolours and paint a greeting card. I can practise for 30 minutes, four days a week. I prefer Hindi, larger text, seated alternatives, and a small online group in Pune.",
   );
   await page.getByRole("button", { name: "Review my details" }).click();
-  await page.getByRole("button", { name: "My words look right" }).click();
 
   const permissionToggle = page.getByRole("button", { name: "Preferences & permission" });
   if (await permissionToggle.isVisible()) await permissionToggle.click();

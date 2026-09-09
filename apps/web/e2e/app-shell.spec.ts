@@ -426,7 +426,7 @@ test("desktop rail touches the left edge and content centers in the remaining ca
   expect.soft(Math.abs(mainCenter - remainingCanvasCenter), "remaining-canvas centering delta").toBeLessThanOrEqual(2);
 });
 
-test("reviewed onboarding details cross the profile boundary only after confirmation", async ({ page }) => {
+test("reviewed onboarding details are directly editable and cross the profile boundary only after confirmation", async ({ page }) => {
   const profileRequests: Record<string, unknown>[] = [];
   await page.route("**/api/v1/profile", async (route) => {
     profileRequests.push(route.request().postDataJSON());
@@ -467,8 +467,26 @@ test("reviewed onboarding details cross the profile boundary only after confirma
 
   await page.getByRole("button", { name: "Review my details" }).click();
   await expect(page.getByText("Nothing has been saved")).toBeVisible();
+  await expect(page.getByRole("button", { name: "My words look right" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Edit:/ })).toHaveCount(0);
+  await expect(page.locator(".review-field-control")).toHaveCount(8);
+  await expect(page.locator(".required-label")).toHaveCount(5);
+  const hobby = page.getByRole("textbox", { name: "What would you like to learn? Required" });
+  await expect(hobby).toHaveValue("Watercolour painting");
+  await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
+  expect(await page.evaluate(() => (
+    document.documentElement.scrollWidth - document.documentElement.clientWidth
+  ))).toBeLessThanOrEqual(1);
+  const undersizedVisibleControls = await page.locator(".review-field-control").evaluateAll((controls) => (
+    controls.map((control) => {
+      const rect = control.getBoundingClientRect();
+      return { width: rect.width, height: rect.height };
+    }).filter(({ width, height }) => width > 0 && height > 0 && (width < 48 || height < 48))
+  ));
+  expect(undersizedVisibleControls).toEqual([]);
+  await page.evaluate(() => { document.documentElement.style.fontSize = "100%"; });
+  await hobby.fill("Botanical watercolour painting");
   expect(profileRequests).toHaveLength(0);
-  await page.getByRole("button", { name: "My words look right" }).click();
   const permissionToggle = page.getByRole("button", { name: "Preferences & permission" });
   if (await permissionToggle.isVisible()) await permissionToggle.click();
   await page.getByRole("checkbox", { name: /I agree SakhiCircle may use/ }).check();
@@ -479,7 +497,7 @@ test("reviewed onboarding details cross the profile boundary only after confirma
   expect(profileRequests[0]).not.toHaveProperty("transcript");
   expect(profileRequests[0]).not.toHaveProperty("rawAudio");
   expect(profileRequests[0]).toMatchObject({
-    hobby: "Watercolour painting",
+    hobby: "Botanical watercolour painting",
     planConsent: true,
     matchingConsent: false,
   });
@@ -538,7 +556,6 @@ test("plan creation is shown before the plan-ready screen", async ({ page }) => 
     "I want to restart watercolours and paint a greeting card. I can practise for 30 minutes, four days a week. I prefer Hindi, larger text, seated alternatives, and a small online group in Pune.",
   );
   await page.getByRole("button", { name: "Review my details" }).click();
-  await page.getByRole("button", { name: "My words look right" }).click();
   const permissionToggle = page.getByRole("button", { name: "Preferences & permission" });
   if (await permissionToggle.isVisible()) await permissionToggle.click();
   await page.getByRole("checkbox", { name: /I agree SakhiCircle may use/ }).check();
@@ -591,7 +608,6 @@ test("bilingual journey stays unsaved through review and persists only the confi
     "I want to restart watercolours and paint a greeting card. I can practise for 30 minutes, four days a week. I prefer Hindi, larger text, seated alternatives, and a small online group in Pune.",
   );
   await page.getByRole("button", { name: "Review my details" }).click();
-  await page.getByRole("button", { name: "My words look right" }).click();
   const permissionToggle = page.getByRole("button", { name: "Preferences & permission" });
   if (await permissionToggle.isVisible()) await permissionToggle.click();
   await page.getByRole("checkbox", { name: /I agree SakhiCircle may use/ }).check();
@@ -699,7 +715,6 @@ test("one explainable match is fetched only by the explicit action and survives 
     "I want to restart watercolours and paint a greeting card. I can practise for 30 minutes, four days a week. I prefer Hindi, larger text, seated alternatives, and a small online group in Pune.",
   );
   await page.getByRole("button", { name: "Review my details" }).click();
-  await page.getByRole("button", { name: "My words look right" }).click();
   const permissionToggle = page.getByRole("button", { name: "Preferences & permission" });
   if (await permissionToggle.isVisible()) await permissionToggle.click();
   await page.getByRole("checkbox", { name: /I agree SakhiCircle may use/ }).check();

@@ -64,8 +64,12 @@ export interface JourneyGateway {
 interface JourneyApiGatewayOptions {
   apiBaseUrl: string;
   requestHeaders(): Promise<Record<string, string>>;
+  requestTimeoutMs?: number;
   fetcher?: typeof fetch;
 }
+
+// Covers two bounded 30-second review attempts plus network and response parsing time.
+const DEFAULT_JOURNEY_REQUEST_TIMEOUT_MS = 75_000;
 
 export function nextJourneyStartDate(now = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -100,28 +104,44 @@ export function shiftJourneyStartDate(draft: JourneyDraft, startsOn: string): Jo
 export function createJourneyApiGateway({
   apiBaseUrl,
   requestHeaders,
+  requestTimeoutMs = DEFAULT_JOURNEY_REQUEST_TIMEOUT_MS,
   fetcher = fetch,
 }: JourneyApiGatewayOptions): JourneyGateway {
   const api = apiBaseUrl.replace(/\/$/, "");
   const headers = async () => ({ ...(await requestHeaders()), "Content-Type": "application/json" });
+  const request = async (url: string, init: RequestInit): Promise<JourneyDraft> => {
+    const controller = new AbortController();
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    const timedOut = new Promise<never>((_resolve, reject) => {
+      timeout = setTimeout(() => {
+        controller.abort();
+        reject(new Error(`Plan request timed out after ${Math.round(requestTimeoutMs / 1_000)} seconds.`));
+      }, requestTimeoutMs);
+    });
+    const response = (async () => {
+      const result = await fetcher(url, { ...init, headers: await headers(), signal: controller.signal });
+      if (!result.ok) throw new Error(`Journey request failed with status ${result.status}.`);
+      return result.json() as Promise<JourneyDraft>;
+    })();
+
+    try {
+      return await Promise.race([response, timedOut]);
+    } finally {
+      if (timeout !== undefined) clearTimeout(timeout);
+    }
+  };
   return {
     async create(startsOn) {
-      const response = await fetcher(`${api}/api/v1/journeys`, {
+      return request(`${api}/api/v1/journeys`, {
         method: "POST",
-        headers: await headers(),
         body: JSON.stringify({ startsOn }),
       });
-      if (!response.ok) throw new Error(`Journey generation failed with status ${response.status}.`);
-      return response.json() as Promise<JourneyDraft>;
     },
     async confirm(draft) {
-      const response = await fetcher(`${api}/api/v1/journeys/${encodeURIComponent(draft.journeyId)}`, {
+      return request(`${api}/api/v1/journeys/${encodeURIComponent(draft.journeyId)}`, {
         method: "PUT",
-        headers: await headers(),
         body: JSON.stringify(draft),
       });
-      if (!response.ok) throw new Error(`Journey confirmation failed with status ${response.status}.`);
-      return response.json() as Promise<JourneyDraft>;
     },
   };
 }

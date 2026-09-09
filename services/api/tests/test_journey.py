@@ -112,6 +112,45 @@ def test_arbitrary_topic_fallback_stays_relevant_without_material_specific_advic
     assert "materials" not in journey.model_dump_json().casefold()
 
 
+def test_eight_week_harp_fallback_advances_without_repeating_generic_days() -> None:
+    profile = LearningWishProfile.model_validate(
+        {
+            **PROFILE,
+            "hobby": "Harp",
+            "goal": "Play a short beginner melody",
+            "availability": "45 minutes · 5 days a week",
+            "planWeeks": 8,
+        }
+    )
+
+    journey = build_curated_fallback(
+        profile=profile,
+        starts_on=date.fromisoformat(STARTS_ON),
+        journey_id="journey_harp_fallback",
+        reason="workflow_timeout",
+        attempts=1,
+    )
+
+    required = [
+        activity
+        for week in journey.weeks
+        for activity in week.activities
+        if activity.required
+    ]
+    required_copy = " ".join(
+        " ".join([activity.title.en, *activity.instructions.en])
+        for activity in required
+    ).casefold()
+    assert len({week.theme.en for week in journey.weeks}) == 8
+    assert len({tuple(activity.instructions.en) for activity in required}) == len(required)
+    assert len({activity.accessible_alternative.en for activity in required}) >= 5
+    assert len({activity.reflection_prompt.en for activity in required}) == len(required)
+    assert len({activity.safety_note.en for activity in required}) >= 5
+    assert "one steady harp step" not in required_copy
+    assert "string colours" in required_copy
+    assert "melody" in required_copy
+
+
 def test_deterministic_draft_has_exact_bilingual_28_day_structure_and_no_write() -> None:
     client, app = client_with_profile()
 

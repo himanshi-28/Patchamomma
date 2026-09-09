@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Pencil, RotateCcw, Sparkles } from "lucide-react";
+import { Check, ChevronDown, RotateCcw, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   extractLearningWish,
@@ -71,10 +71,9 @@ const copy = {
     privacy: "Nothing is saved until you confirm.",
     reviewTitle: "Review before saving",
     nothingSaved: "Nothing has been saved",
-    reviewIntro: "Check your words, then review each detail. You can change anything before confirming.",
-    transcriptSummary: "1. Check your words",
+    reviewIntro: "Review your words and details. You can change anything before confirming.",
+    transcriptSummary: "Your words",
     transcriptLabel: "Editable transcript",
-    transcriptRight: "My words look right",
     update: "Update details from my words",
     groups: { learning: "Learning", comfort: "Time & comfort", permission: "Preferences & permission" },
     labels: {
@@ -88,8 +87,6 @@ const copy = {
       city: "City (optional)",
     },
     goalContext: "What are you learning for? (optional)",
-    edit: "Edit",
-    saveDetail: "Save detail",
     missing: "Please add this",
     required: "Required",
     missingOptional: "Not provided (optional)",
@@ -130,10 +127,9 @@ const copy = {
     privacy: "आपकी पुष्टि तक कुछ भी सेव नहीं होता।",
     reviewTitle: "सेव करने से पहले जाँचें",
     nothingSaved: "अभी कुछ भी सेव नहीं हुआ है",
-    reviewIntro: "अपने शब्द और हर विवरण जाँचें। पुष्टि से पहले आप कुछ भी बदल सकती हैं।",
-    transcriptSummary: "1. अपने शब्द जाँचें",
+    reviewIntro: "अपने शब्द और विवरण जाँचें। पुष्टि से पहले आप कुछ भी बदल सकती हैं।",
+    transcriptSummary: "आपके शब्द",
     transcriptLabel: "बदली जा सकने वाली ट्रांसक्रिप्ट",
-    transcriptRight: "मेरे शब्द सही हैं",
     update: "मेरे शब्दों से विवरण अपडेट करें",
     groups: { learning: "सीखना", comfort: "समय और सुविधा", permission: "पसंद और अनुमति" },
     labels: {
@@ -147,8 +143,6 @@ const copy = {
       city: "शहर (वैकल्पिक)",
     },
     goalContext: "आप किस उद्देश्य से सीख रही हैं? (वैकल्पिक)",
-    edit: "बदलें",
-    saveDetail: "विवरण सेव करें",
     missing: "यह विवरण जोड़ें",
     required: "ज़रूरी",
     missingOptional: "नहीं बताया (वैकल्पिक)",
@@ -174,56 +168,10 @@ const copy = {
   },
 } as const;
 
-interface RequiredFieldMarkerProps {
-  fieldId: FieldKey;
-  fieldLabel: string;
-  requiredLabel: string;
-  missingGuidance: string;
-  missing: boolean;
-}
-
-function RequiredFieldMarker({ fieldId, fieldLabel, requiredLabel, missingGuidance, missing }: RequiredFieldMarkerProps) {
-  const [open, setOpen] = useState(false);
-  const tooltipId = `required-${fieldId}-hint`;
-  const guidance = missing ? missingGuidance : requiredLabel;
-  const accessibleLabel = `${fieldLabel}: ${requiredLabel}${missing ? `. ${missingGuidance}` : ""}`;
-
-  return (
-    <span className="required-marker-wrap">
-      <button
-        className={`required-marker ${missing ? "missing" : ""}`}
-        type="button"
-        aria-label={accessibleLabel}
-        aria-describedby={open ? tooltipId : undefined}
-        aria-expanded={open}
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={(event) => {
-          if (document.activeElement !== event.currentTarget) setOpen(false);
-        }}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setOpen(false)}
-        onClick={() => setOpen(true)}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") {
-            setOpen(false);
-            event.currentTarget.blur();
-          }
-        }}
-      >
-        <span aria-hidden="true">*</span>
-      </button>
-      {open && <span className="required-tooltip" id={tooltipId} role="tooltip">{guidance}</span>}
-    </span>
-  );
-}
-
 export function OnboardingFlow({ locale, profileGateway, extractionGateway, onConfirmed }: OnboardingFlowProps) {
   const [stage, setStage] = useState<Stage>("capture");
   const [transcript, setTranscript] = useState("");
   const [wish, setWish] = useState<LearningWish>(() => extractLearningWish("", locale));
-  const [transcriptReviewed, setTranscriptReviewed] = useState(false);
-  const [editing, setEditing] = useState<FieldKey | null>(null);
-  const [pendingEdit, setPendingEdit] = useState("");
   const [activeGroup, setActiveGroup] = useState<GroupKey>("learning");
   const [changedFields, setChangedFields] = useState<Set<FieldKey>>(new Set());
   const [saving, setSaving] = useState(false);
@@ -263,7 +211,6 @@ export function OnboardingFlow({ locale, profileGateway, extractionGateway, onCo
       planConsent: current.planConsent,
       matchingConsent: current.matchingConsent,
     }));
-    setTranscriptReviewed(false);
     setExtracting(false);
     setStage("review");
   };
@@ -282,19 +229,12 @@ export function OnboardingFlow({ locale, profileGateway, extractionGateway, onCo
       matchingConsent: wish.matchingConsent,
     });
     setChangedFields(changed);
-    setTranscriptReviewed(false);
     setExtracting(false);
   };
 
-  const beginEdit = (key: FieldKey) => {
-    setEditing(key);
-    setPendingEdit(wish[key]);
-  };
-
-  const saveEdit = (key: FieldKey) => {
-    setWish((current) => ({ ...current, [key]: pendingEdit.trim() }));
+  const updateWishField = (key: FieldKey, value: string) => {
+    setWish((current) => ({ ...current, [key]: value }));
     setChangedFields((current) => new Set(current).add(key));
-    setEditing(null);
   };
 
   const saveProfile = async () => {
@@ -315,7 +255,7 @@ export function OnboardingFlow({ locale, profileGateway, extractionGateway, onCo
     }
   };
 
-  const complete = requiredFields.every((key) => wish[key].trim()) && wish.planConsent && transcriptReviewed;
+  const complete = requiredFields.every((key) => wish[key].trim()) && wish.planConsent;
 
   if (stage === "success") {
     return (
@@ -347,10 +287,7 @@ export function OnboardingFlow({ locale, profileGateway, extractionGateway, onCo
           <textarea
             id="learning-wish"
             value={transcript}
-            onChange={(event) => {
-              setTranscript(event.target.value);
-              setTranscriptReviewed(false);
-            }}
+            onChange={(event) => setTranscript(event.target.value)}
             rows={6}
           />
           <div className="timeline-field">
@@ -396,17 +333,14 @@ export function OnboardingFlow({ locale, profileGateway, extractionGateway, onCo
       </div>
 
       <div className="review-layout">
-        <section className={`transcript-review ${transcriptReviewed ? "reviewed" : ""}`} aria-labelledby="transcript-heading">
+        <section className="transcript-review" aria-labelledby="transcript-heading">
           <h2 id="transcript-heading">{text.transcriptSummary}</h2>
           <div className="transcript-body">
             <label htmlFor="review-transcript">{text.transcriptLabel}</label>
             <textarea
               id="review-transcript"
               value={transcript}
-              onChange={(event) => {
-                setTranscript(event.target.value);
-                setTranscriptReviewed(false);
-              }}
+              onChange={(event) => setTranscript(event.target.value)}
               rows={7}
             />
             <div className="timeline-field review-timeline-field">
@@ -422,9 +356,6 @@ export function OnboardingFlow({ locale, profileGateway, extractionGateway, onCo
               </select>
             </div>
             <div className="transcript-actions">
-              <button className="secondary-button" type="button" onClick={() => setTranscriptReviewed(true)}>
-                <Check aria-hidden="true" />{text.transcriptRight}
-              </button>
               <button className="text-button" type="button" onClick={updateDetails} disabled={extracting}>
                 <RotateCcw aria-hidden="true" />{extracting ? text.extracting : text.update}
               </button>
@@ -450,45 +381,41 @@ export function OnboardingFlow({ locale, profileGateway, extractionGateway, onCo
                   const selectOptions = wish[key] && !currentOptions.includes(wish[key])
                     ? [wish[key], ...currentOptions]
                     : currentOptions;
+                  const required = requiredFields.includes(key);
+                  const fieldId = `review-${key}`;
                   return (
-                    <div className="field-row" key={key} data-changed={changedFields.has(key) || undefined}>
-                      <div className="field-copy">
-                        <span className="field-label-line">
-                          <span className="field-label">{text.labels[key]}</span>
-                          {requiredFields.includes(key) && (
-                            <RequiredFieldMarker
-                              fieldId={key}
-                              fieldLabel={text.labels[key]}
-                              requiredLabel={text.required}
-                              missingGuidance={text.missing}
-                              missing={!wish[key]}
-                            />
-                          )}
-                        </span>
-                        {wish[key]
-                          ? <strong>{wish[key]}</strong>
-                          : !requiredFields.includes(key) && <span className="missing-detail">{text.missingOptional}</span>}
-                        {key === "goal" && wish.goal && <span className="field-context">{text.goalContext}</span>}
-                        {changedFields.has(key) && <small>{text.changed}</small>}
-                      </div>
-                      {editing === key ? (
-                        <div className="field-editor">
-                          <label htmlFor={`edit-${key}`}>{text.labels[key]}</label>
-                          {options[key] ? (
-                            <select id={`edit-${key}`} value={pendingEdit} onChange={(event) => setPendingEdit(event.target.value)}>
-                              <option value="">{requiredFields.includes(key) ? text.missing : text.missingOptional}</option>
-                              {selectOptions.map((value) => <option key={value} value={value}>{value}</option>)}
-                            </select>
-                          ) : (
-                            <input id={`edit-${key}`} value={pendingEdit} onChange={(event) => setPendingEdit(event.target.value)} />
-                          )}
-                          <button className="secondary-button" type="button" onClick={() => saveEdit(key)}>{text.saveDetail}</button>
-                        </div>
+                    <div
+                      className="field-row"
+                      key={key}
+                      data-changed={changedFields.has(key) || undefined}
+                      data-missing={required && !wish[key].trim() || undefined}
+                    >
+                      <label className="review-field-label" htmlFor={fieldId}>
+                        <span>{text.labels[key]}</span>
+                        {required && <span className="required-label">{text.required}</span>}
+                      </label>
+                      {options[key] ? (
+                        <select
+                          className="review-field-control"
+                          id={fieldId}
+                          value={wish[key]}
+                          required={required}
+                          onChange={(event) => updateWishField(key, event.target.value)}
+                        >
+                          <option value="">{required ? text.missing : text.missingOptional}</option>
+                          {selectOptions.map((value) => <option key={value} value={value}>{value}</option>)}
+                        </select>
                       ) : (
-                        <button className="edit-button" type="button" aria-label={`${text.edit}: ${text.labels[key]}`} onClick={() => beginEdit(key)}>
-                          <Pencil aria-hidden="true" />{text.edit}
-                        </button>
+                        <input
+                          className="review-field-control"
+                          id={fieldId}
+                          value={wish[key]}
+                          required={required}
+                          onChange={(event) => updateWishField(key, event.target.value)}
+                        />
                       )}
+                      {key === "goal" && <span className="field-context">{text.goalContext}</span>}
+                      {changedFields.has(key) && <small className="field-change-note">{text.changed}</small>}
                     </div>
                   );
                 })}
