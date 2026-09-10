@@ -312,16 +312,11 @@ def test_server_rejects_workflow_output_that_changes_trusted_identity_or_start_d
 
 
 def test_real_adk_pipeline_is_fixed_to_three_structured_stages_without_tools() -> None:
-    from google import genai
-
-    client = genai.Client(api_key="test-key-is-never-used")
-    try:
-        pipeline = GoogleAdkJourneyWorkflow.build_pipeline(
-            client=client,
-            model_name="gemini-3.7-flash",
-        )
-    finally:
-        client.close()
+    client_kwargs = {"api_key": "test-key-is-never-used"}
+    pipeline = GoogleAdkJourneyWorkflow.build_pipeline(
+        client_kwargs=client_kwargs,
+        model_name="gemini-3.7-flash",
+    )
 
     assert pipeline.name == "sakhicircle_bounded_journey_workflow"
     assert [agent.name for agent in pipeline.sub_agents] == [
@@ -335,6 +330,7 @@ def test_real_adk_pipeline_is_fixed_to_three_structured_stages_without_tools() -
         "localized_journey",
     ]
     assert all(agent.tools == [] for agent in pipeline.sub_agents)
+    assert all(agent.model.client_kwargs == client_kwargs for agent in pipeline.sub_agents)
     assert all(agent.output_schema is not None for agent in pipeline.sub_agents)
     assert all(
         agent.generate_content_config.temperature is None
@@ -390,8 +386,9 @@ def test_production_gemini_configuration_requires_explicit_paid_calls_and_creden
     )
     assert vertex.gemini_api_key is None
     assert vertex.gemini_backend == "vertex_ai"
-    assert vertex.journey_attempt_timeout_seconds == 30
+    assert vertex.journey_attempt_timeout_seconds == 90
     assert vertex.profile_extraction_timeout_seconds == 10
+    assert vertex.video_guide_gemini_model == "gemini-2.5-flash-lite"
 
 
 def test_production_uses_separate_models_for_extraction_and_adk_planning() -> None:

@@ -117,8 +117,8 @@ interface JourneyApiGatewayOptions {
   fetcher?: typeof fetch;
 }
 
-// Covers two bounded 30-second review attempts plus network and response parsing time.
-const DEFAULT_JOURNEY_REQUEST_TIMEOUT_MS = 75_000;
+// Covers the bounded 90-second written-plan attempt, video enrichment, and network time.
+const DEFAULT_JOURNEY_REQUEST_TIMEOUT_MS = 150_000;
 
 export function nextJourneyStartDate(now = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-CA", {

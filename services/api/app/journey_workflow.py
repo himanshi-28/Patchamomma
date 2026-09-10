@@ -463,14 +463,14 @@ class GoogleAdkJourneyWorkflow:
         )
 
     @staticmethod
-    def build_pipeline(*, client: Any, model_name: str) -> Any:
+    def build_pipeline(*, client_kwargs: dict[str, Any], model_name: str) -> Any:
         from google.adk.agents import LlmAgent, SequentialAgent
         from google.adk.models import Gemini
         from google.genai import types
 
         model = Gemini(
             model=model_name,
-            client=client,
+            client_kwargs=client_kwargs,
             retry_options=types.HttpRetryOptions(attempts=1),
         )
         generation_config = types.GenerateContentConfig(
@@ -508,17 +508,17 @@ class GoogleAdkJourneyWorkflow:
             sub_agents=[planner, reviewer, localizer],
         )
 
-    async def _run_with_client(
+    async def _run_with_client_kwargs(
         self,
         *,
         request: JourneyWorkflowInput,
-        client: Any,
+        client_kwargs: dict[str, Any],
     ) -> JourneyWorkflowResult:
         from google.adk.runners import InMemoryRunner
         from google.genai import types
 
         pipeline = self.build_pipeline(
-            client=client,
+            client_kwargs=client_kwargs,
             model_name=self._model,
         )
         async with InMemoryRunner(
@@ -575,9 +575,7 @@ class GoogleAdkJourneyWorkflow:
 
     async def run(self, request: JourneyWorkflowInput) -> JourneyWorkflowResult:
         try:
-            from google import genai
-
-            client_options = (
+            client_kwargs = (
                 {
                     "vertexai": True,
                     "project": self._vertex_project,
@@ -586,8 +584,10 @@ class GoogleAdkJourneyWorkflow:
                 if self._vertex_project is not None
                 else {"api_key": self._api_key}
             )
-            with genai.Client(**client_options) as client:
-                return await self._run_with_client(request=request, client=client)
+            return await self._run_with_client_kwargs(
+                request=request,
+                client_kwargs=client_kwargs,
+            )
         except WorkflowUnavailable:
             raise
         except (ValidationError, json.JSONDecodeError, TypeError):

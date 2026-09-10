@@ -12,7 +12,12 @@ from app.persistence import (
     InMemoryProfileRepository,
     InMemoryRecommendationRepository,
 )
-from app.quotas import InMemoryQuotaCounterStore, QuotaExceeded, QuotaService
+from app.quotas import (
+    InMemoryQuotaCounterStore,
+    QuotaExceeded,
+    QuotaReservation,
+    QuotaService,
+)
 from app.video_recommendations import (
     DiscoveredPlaylist,
     DiscoveredVideo,
@@ -185,10 +190,54 @@ def test_video_assignment_covers_every_requested_week_within_the_time_budget(wee
     assert len(journey["weeks"]) == weeks
     assert all(len(week["videoGuide"]["videos"]) in {1, 2} for week in journey["weeks"])
     assert all(
-        sum(video["durationSeconds"] for video in week["videoGuide"]["videos"]) <= 30 * 60 * 4
+        sum(video["durationSeconds"] for video in week["videoGuide"]["videos"])
+        <= 30 * 60 * 4
         for week in journey["weeks"]
     )
 
+
+def test_video_guide_receives_only_bounded_course_metadata() -> None:
+    sparse = candidate(video_count=1).model_copy(
+        update={"playlist_id": "PLsparseCourse12345"}
+    )
+    oversized = candidate(video_count=50).model_copy(
+        update={
+            "description": "P" * 3_000,
+            "videos": [
+                video.model_copy(update={"description": "V" * 3_000})
+                for video in candidate(video_count=50).videos
+            ],
+        }
+    )
+    alternatives = [
+        candidate(video_count=30).model_copy(
+            update={"playlist_id": f"PLcourseCandidate{index:02d}"}
+        )
+        for index in range(2, 6)
+    ]
+    generator = ScriptedGenerator(generated(8))
+    recommendation_service = VideoRecommendationService(
+        discovery=ScriptedDiscovery([sparse, oversized, *alternatives]),
+        generator=generator,
+        clock=lambda: NOW,
+    )
+
+    journey = create_journey(
+        "Piano",
+        weeks=8,
+        recommendation_service=recommendation_service,
+    )
+
+    request = generator.requests[0]
+    assert journey["videoRecommendation"]["status"] == "recommended"
+    assert len(request.candidates) == 3
+    assert all(8 <= len(item.videos) <= 16 for item in request.candidates)
+    assert all(len(item.description) <= 400 for item in request.candidates)
+    assert all(
+        len(video.description) <= 240
+        for item in request.candidates
+        for video in item.videos
+    )
 
 def test_no_match_and_provider_failure_keep_the_written_plan() -> None:
     no_match = create_journey("Origami", recommendation_service=service([], None))
@@ -277,6 +326,45 @@ def test_current_journey_and_explicit_video_refresh_are_available() -> None:
     assert current.json()["status"] == "confirmed"
     assert refreshed.status_code == 200
     assert refreshed.json()["videoRecommendation"]["status"] == "recommended"
+
+
+def test_repeated_refreshes_in_one_cache_window_are_quota_idempotent() -> None:
+    class RecordingStore:
+        def __init__(self) -> None:
+            self.delegate = InMemoryQuotaCounterStore()
+            self.youtube_keys: list[str | None] = []
+
+        def reserve(self, reservations: list[QuotaReservation], *, now: datetime) -> None:
+            self.delegate.reserve(reservations, now=now)
+            for reservation in reservations:
+                if reservation.quota_name == "youtube_search" and reservation.scope_kind == "subject":
+                    self.youtube_keys.append(reservation.idempotency_key)
+
+    store = RecordingStore()
+    app = create_app(
+        Settings(app_env="test", demo_mode=True),
+        quota_service=QuotaService(store, clock=lambda: NOW),
+        video_recommendation_service=service(),
+    )
+    client = TestClient(app)
+    client.put("/api/v1/profile", headers=AUTH_HEADERS, json=profile())
+    draft = client.post(
+        "/api/v1/journeys", headers=AUTH_HEADERS, json={"startsOn": "2026-09-10"}
+    ).json()
+    client.put(
+        f"/api/v1/journeys/{draft['journeyId']}", headers=AUTH_HEADERS, json=draft
+    )
+    store.youtube_keys.clear()
+
+    for _ in range(2):
+        response = client.post(
+            f"/api/v1/journeys/{draft['journeyId']}/video-recommendation",
+            headers=AUTH_HEADERS,
+        )
+        assert response.status_code == 200
+
+    assert len(store.youtube_keys) == 2
+    assert store.youtube_keys[0] == store.youtube_keys[1]
 
 
 def test_learner_can_delete_video_metadata_without_deleting_the_written_plan() -> None:

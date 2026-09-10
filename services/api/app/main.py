@@ -2,6 +2,7 @@ import asyncio
 import logging
 from collections.abc import Callable
 from contextvars import ContextVar
+from datetime import UTC, datetime
 from typing import Annotated, Any, cast
 from uuid import uuid4
 
@@ -662,7 +663,10 @@ def create_app(
             current,
             profile,
             user,
-            idempotency_key=f"{journey_id}:refresh:{uuid4().hex}",
+            idempotency_key=(
+                f"{journey_id}:refresh:"
+                f"{int(datetime.now(UTC).timestamp() // (15 * 60))}"
+            ),
         )
         try:
             api.state.journey_repository.save_confirmed_journey(user.uid, refreshed)

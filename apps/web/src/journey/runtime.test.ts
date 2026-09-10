@@ -22,9 +22,9 @@ describe("journey API boundary", () => {
     });
 
     const result = expect(gateway.create("2026-09-10")).rejects.toThrow(
-      "Plan request timed out after 75 seconds.",
+      "Plan request timed out after 150 seconds.",
     );
-    await vi.advanceTimersByTimeAsync(75_000);
+    await vi.advanceTimersByTimeAsync(150_000);
 
     await result;
     expect(fetcher.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal);

@@ -72,12 +72,12 @@ def test_cloud_run_manifest_is_fail_closed_and_contains_no_secret_values() -> No
         "SAKHI_DEMO_MODE": "false",
         "SAKHI_ADAPTER_MODE": "production",
         "SAKHI_JOURNEY_ADAPTER_MODE": "gemini_adk",
-        "SAKHI_JOURNEY_ATTEMPT_TIMEOUT_SECONDS": "30",
+        "SAKHI_JOURNEY_ATTEMPT_TIMEOUT_SECONDS": "90",
         "SAKHI_PROFILE_EXTRACTION_TIMEOUT_SECONDS": "10",
         "SAKHI_PAID_API_CALLS_ENABLED": "true",
         "SAKHI_GEMINI_MODEL": "gemini-3.7-flash",
         "SAKHI_JOURNEY_GEMINI_MODEL": "gemini-2.5-flash",
-        "SAKHI_VIDEO_GUIDE_GEMINI_MODEL": "gemini-2.5-flash",
+        "SAKHI_VIDEO_GUIDE_GEMINI_MODEL": "gemini-2.5-flash-lite",
         "SAKHI_YOUTUBE_DISCOVERY_ENABLED": "false",
         "SAKHI_YOUTUBE_API_KEY": {
             "secretKeyRef": {"name": "sakhi-youtube-data-api-key", "key": "latest"}

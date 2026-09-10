@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import re
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
@@ -16,6 +17,12 @@ YOUTUBE_API_ROOT = "https://www.googleapis.com/youtube/v3"
 METADATA_TTL = timedelta(days=29)
 DISCOVERY_CACHE_TTL = timedelta(minutes=15)
 MAX_VIDEO_SECONDS = 3 * 60 * 60
+MAX_GUIDE_CANDIDATES = 3
+MAX_GUIDE_VIDEOS = 16
+MAX_GUIDE_PLAYLIST_DESCRIPTION_CHARS = 400
+MAX_GUIDE_VIDEO_DESCRIPTION_CHARS = 240
+
+logger = logging.getLogger("sakhicircle.video_recommendations")
 
 
 class VideoDiscoveryUnavailable(RuntimeError):
@@ -156,6 +163,48 @@ STATUS_MESSAGES: dict[str, dict[str, str]] = {
 }
 
 
+def _bounded_guide_candidates(
+    candidates: list[DiscoveredPlaylist],
+    *,
+    plan_weeks: int,
+    weekly_budget_seconds: int,
+) -> list[DiscoveredPlaylist]:
+    """Keep the model request small while retaining exact displayed YouTube metadata."""
+
+    bounded: list[DiscoveredPlaylist] = []
+    video_limit = min(MAX_GUIDE_VIDEOS, plan_weeks * 2)
+    for candidate in candidates:
+        usable_videos = [
+            video
+            for video in candidate.videos
+            if video.duration_seconds <= weekly_budget_seconds
+        ]
+        if len(usable_videos) < plan_weeks:
+            continue
+        bounded.append(
+            candidate.model_copy(
+                update={
+                    "description": candidate.description[
+                        :MAX_GUIDE_PLAYLIST_DESCRIPTION_CHARS
+                    ],
+                    "videos": [
+                        video.model_copy(
+                            update={
+                                "description": video.description[
+                                    :MAX_GUIDE_VIDEO_DESCRIPTION_CHARS
+                                ]
+                            }
+                        )
+                        for video in usable_videos[:video_limit]
+                    ],
+                }
+            )
+        )
+        if len(bounded) == MAX_GUIDE_CANDIDATES:
+            break
+    return bounded
+
+
 class VideoRecommendationService:
     def __init__(
         self,
@@ -188,25 +237,36 @@ class VideoRecommendationService:
         )
         try:
             candidates = await self._discover_cached(discovery_request)
-        except (VideoDiscoveryUnavailable, httpx.HTTPError, TimeoutError, ValueError, TypeError):
+        except (VideoDiscoveryUnavailable, httpx.HTTPError, TimeoutError, ValueError, TypeError) as error:
+            logger.warning("Video discovery unavailable (%s)", type(error).__name__)
             return self._with_status(journey, "unavailable")
         if not candidates:
             return self._with_status(journey, "no_match")
 
         minutes, days = availability_limits(profile)
+        weekly_budget_seconds = minutes * days * 60
+        guide_candidates = _bounded_guide_candidates(
+            candidates,
+            plan_weeks=profile.plan_weeks,
+            weekly_budget_seconds=weekly_budget_seconds,
+        )
+        if not guide_candidates:
+            return self._with_status(journey, "no_match")
         guide_request = VideoGuideRequest(
             topic=discovery_request.topic,
             goal=profile.goal,
             level=discovery_request.level,
             preferredLanguage=discovery_request.preferred_language,
             planWeeks=profile.plan_weeks,
-            weeklyBudgetSeconds=minutes * days * 60,
-            candidates=candidates,
+            weeklyBudgetSeconds=weekly_budget_seconds,
+            candidates=guide_candidates,
         )
         try:
             generated = await self.generator.generate(guide_request)
             return self._materialize(journey, guide_request, generated)
-        except (VideoGuideUnavailable, TimeoutError, ValueError, TypeError):
+        except (VideoGuideUnavailable, TimeoutError, ValueError, TypeError) as error:
+            cause = error.__cause__ if error.__cause__ is not None else error
+            logger.warning("Video guide unavailable (%s)", type(cause).__name__)
             return self._with_status(journey, "unavailable")
 
     async def _discover_cached(self, request: DiscoveryRequest) -> list[DiscoveredPlaylist]:
